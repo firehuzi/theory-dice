@@ -8,7 +8,7 @@
 
 ## 快速开始
 
-1. 打开 https://你的用户名.github.io/theory-dice/
+1. 打开 https://6a43fa5a26fc37a19d42b343--famous-sunflower-c24bb1.netlify.app/
 2. 输入电影名（如「寄生虫」）
 3. 点击 🎲 掷
 4. 模板引擎可以直接用——无需任何配置
