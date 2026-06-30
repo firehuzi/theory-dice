@@ -361,7 +361,7 @@ body {
 .chain-question {
   font-family: var(--sans);
   font-size: 0.62rem;
-  color: rgba(255,255,255,0.35);
+  color: rgba(0,0,0,0.35);
   margin: 0.08rem 0;
   letter-spacing: 0.01em;
   max-width: 120px;
@@ -1089,8 +1089,8 @@ body {
 .closing-question {
   font-family: var(--sans);
   font-size: 0.82rem;
-  color: rgba(255,255,255,0.6);
-  border-top: 1px solid rgba(255,255,255,0.15);
+  color: rgba(0,0,0,0.6);
+  border-top: 1px solid rgba(0,0,0,0.15);
   padding-top: 0.4rem;
   margin-top: 0.3rem;
   display: block;
@@ -1203,7 +1203,7 @@ body {
 .caution-text {
   font-family: var(--sans);
   font-size: 0.68rem;
-  color: rgba(0,0,0,0.35);
+  color: rgba(0,0,0,0.25);
   text-align: center;
   margin-top: 0.6rem;
   line-height: 1.6;
@@ -1222,13 +1222,13 @@ body {
 .mode-toggle-label {
   font-family: var(--sans);
   font-size: 0.7rem;
-  color: rgba(0,0,0,0.45);
+  color: rgba(0,0,0,0.4);
   letter-spacing: 0.04em;
 }
 .mode-toggle-btns {
   display: flex;
   gap: 0.25rem;
-  background: rgba(0,0,0,0.06);
+  background: rgba(0,0,0,0.08);
   border-radius: 6px;
   padding: 2px;
 }
@@ -1249,7 +1249,7 @@ body {
   font-weight: 600;
 }
 .mode-btn:hover:not(.active) {
-  color: rgba(0,0,0,0.85);
+  color: white;
 }
 
 /* === History Section === */
@@ -1269,19 +1269,19 @@ body {
   user-select: none;
 }
 .history-header:hover {
-  background: rgba(0,0,0,0.04);
+  background: rgba(0,0,0,0.06);
 }
 .history-label {
   font-family: var(--sans);
   font-size: 0.68rem;
-  color: rgba(0,0,0,0.45);
+  color: rgba(0,0,0,0.3);
   letter-spacing: 0.04em;
 }
 .history-count {
   font-family: var(--sans);
   font-size: 0.6rem;
-  color: rgba(0,0,0,0.5);
-  background: rgba(0,0,0,0.06);
+  color: rgba(0,0,0,0.25);
+  background: rgba(0,0,0,0.08);
   padding: 0.1rem 0.4rem;
   border-radius: 8px;
   min-width: 1.2rem;
@@ -1307,12 +1307,12 @@ body {
   transition: background 0.15s;
 }
 .history-item:hover {
-  background: rgba(0,0,0,0.04);
+  background: rgba(0,0,0,0.06);
 }
 .history-item-movie {
   font-family: var(--sans);
   font-size: 0.7rem;
-  color: rgba(0,0,0,0.75);
+  color: rgba(0,0,0,0.7);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1322,7 +1322,7 @@ body {
 .history-item-dice {
   font-family: var(--sans);
   font-size: 0.6rem;
-  color: rgba(0,0,0,0.4);
+  color: rgba(0,0,0,0.25);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1331,13 +1331,13 @@ body {
 .history-item-time {
   font-family: var(--sans);
   font-size: 0.55rem;
-  color: rgba(0,0,0,0.35);
+  color: rgba(0,0,0,0.2);
   flex-shrink: 0;
 }
 .history-empty {
   font-family: var(--sans);
   font-size: 0.65rem;
-  color: rgba(0,0,0,0.35);
+  color: rgba(0,0,0,0.2);
   padding: 0.8rem 0.6rem;
   text-align: center;
 }
@@ -1428,7 +1428,7 @@ body {
   <button class="roll-btn" id="rollBtn" onclick="startRoll()">
     <span class="dice-icon">🎲</span> 掷
   </button>
-  <div class="caution-text">当模式比观察更重要时，解读就沦为套路。<br/>让骰子帮你越狱。</div>
+  <div class="caution-text" style="display:none;"></div>
 
   <!-- 历史记录 -->
   <div class="history-section" id="historySection">
@@ -1489,7 +1489,7 @@ body {
         <span class="cf-unit">%</span>
       </div>
       <div class="share-card-watermark">🎲 骰评 · <span id="shareCardStyle"></span></div>
-      <div class="share-card-disclaimer">当模式比观察更重要时，解读就沦为套路。请谨慎投掷。</div>
+      <div class="share-card-disclaimer">当模式比观察更重要时，解读就沦为套路。让骰子帮你越狱。</div>
     </div>
   </div>
 
@@ -3279,14 +3279,16 @@ const API_PROVIDERS = {
     name: 'Ollama（本地）',
     endpoint: 'http://localhost:11434/v1/chat/completions',
     models: [
-      { value: 'hermes3:8b', label: 'Hermes 3 8B' },
-      { value: 'qwen3:0.6b', label: 'Qwen3 0.6B' },
-      { value: 'gemma4:q5', label: 'Gemma 4 E2B Q5' },
       { value: 'qwen2.5:14b', label: 'Qwen2.5 14B' },
       { value: 'qwen2.5:7b', label: 'Qwen2.5 7B' },
+      { value: 'qwen2.5:72b', label: 'Qwen2.5 72B' },
       { value: 'deepseek-r1:14b', label: 'DeepSeek-R1 14B' },
+      { value: 'deepseek-r1:7b', label: 'DeepSeek-R1 7B' },
+      { value: 'llama3.2:3b', label: 'Llama 3.2 3B' },
       { value: 'llama3.1:8b', label: 'Llama 3.1 8B' },
       { value: 'mistral:7b', label: 'Mistral 7B' },
+      { value: 'mistral-nemo:12b', label: 'Mistral Nemo 12B' },
+      { value: 'gemma2:9b', label: 'Gemma 2 9B' },
       { value: 'phi4:14b', label: 'Phi-4 14B' }
     ]
   }
