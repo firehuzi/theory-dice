@@ -1227,6 +1227,96 @@ body {
   color: white;
 }
 
+/* === History Section === */
+.history-section {
+  margin-top: 1.2rem;
+  width: 100%;
+  max-width: 320px;
+}
+.history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.4rem 0.6rem;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.15s;
+  user-select: none;
+}
+.history-header:hover {
+  background: rgba(255,255,255,0.06);
+}
+.history-label {
+  font-family: var(--sans);
+  font-size: 0.68rem;
+  color: rgba(255,255,255,0.3);
+  letter-spacing: 0.04em;
+}
+.history-count {
+  font-family: var(--sans);
+  font-size: 0.6rem;
+  color: rgba(255,255,255,0.25);
+  background: rgba(255,255,255,0.08);
+  padding: 0.1rem 0.4rem;
+  border-radius: 8px;
+  min-width: 1.2rem;
+  text-align: center;
+}
+.history-list {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+.history-list.open {
+  max-height: 400px;
+  overflow-y: auto;
+}
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  margin-top: 2px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.history-item:hover {
+  background: rgba(255,255,255,0.06);
+}
+.history-item-movie {
+  font-family: var(--sans);
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+  flex-shrink: 0;
+}
+.history-item-dice {
+  font-family: var(--sans);
+  font-size: 0.6rem;
+  color: rgba(255,255,255,0.25);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+.history-item-time {
+  font-family: var(--sans);
+  font-size: 0.55rem;
+  color: rgba(255,255,255,0.2);
+  flex-shrink: 0;
+}
+.history-empty {
+  font-family: var(--sans);
+  font-size: 0.65rem;
+  color: rgba(255,255,255,0.2);
+  padding: 0.8rem 0.6rem;
+  text-align: center;
+}
+
 </style>
 </head>
 <body>
@@ -1314,6 +1404,15 @@ body {
     <span class="dice-icon">🎲</span> 掷
   </button>
   <div class="caution-text">当模式比观察更重要时，解读就沦为套路。<br/>让骰子帮你越狱。</div>
+
+  <!-- 历史记录 -->
+  <div class="history-section" id="historySection">
+    <div class="history-header" onclick="toggleHistory()">
+      <span class="history-label">📋 掷骰记录</span>
+      <span class="history-count" id="historyCount">0</span>
+    </div>
+    <div class="history-list" id="historyList"></div>
+  </div>
 </div>
 
 <!-- ROLLING -->
@@ -3804,10 +3903,141 @@ function buildShareCard() {
       chainEl.appendChild(arrow);
     }
   }
+  // 构建完成后自动保存到历史记录
+  saveRollToHistory();
+}
+
+// === 历史记录 ===
+const HISTORY_KEY = 'theory_dice_history';
+const MAX_HISTORY = 50;
+
+function getHistory() {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch(e) { return []; }
+}
+
+function saveRollToHistory() {
+  if (!currentObject || !currentDice || Object.keys(currentDice).length === 0) return;
+  const history = getHistory();
+  const entry = {
+    id: Date.now(),
+    object: currentObject,
+    dice: { ...currentDice },
+    registers: currentDiceRegisters ? { ...currentDiceRegisters } : null,
+    interpText: apiInterpText || '',
+    confidence: currentConfidence,
+    style: currentStyle,
+    engineMode: engineMode,
+    readingMode: currentDiceRegisters
+      ? (Object.values(currentDiceRegisters).filter(r => r === 'around').length >= 3 ? 'around'
+        : Object.values(currentDiceRegisters).filter(r => r === 'around').length >= 1 ? 'mixed' : 'inside')
+      : 'inside',
+    director: currentDirector ? { key: currentDirector.key } : null,
+    createdAt: new Date().toISOString()
+  };
+  // 去重：同一电影+相同骰子组合不重复记录
+  const dup = history.find(e =>
+    e.object === entry.object &&
+    JSON.stringify(e.dice) === JSON.stringify(entry.dice)
+  );
+  if (dup) return;
+  history.unshift(entry);
+  if (history.length > MAX_HISTORY) history.length = MAX_HISTORY;
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  renderHistory();
+}
+
+function renderHistory() {
+  const history = getHistory();
+  const countEl = document.getElementById('historyCount');
+  const listEl = document.getElementById('historyList');
+  if (countEl) countEl.textContent = history.length;
+  if (!listEl) return;
+  if (history.length === 0) {
+    listEl.innerHTML = '<div class="history-empty">还没有掷骰记录</div>';
+    return;
+  }
+  listEl.innerHTML = history.map(e => {
+    const time = new Date(e.createdAt);
+    const timeStr = `${String(time.getMonth()+1).padStart(2,'0')}-${String(time.getDate()).padStart(2,'0')} ${String(time.getHours()).padStart(2,'0')}:${String(time.getMinutes()).padStart(2,'0')}`;
+    const diceSummary = e.dice ? [e.dice.framework, e.dice.problem, e.dice.collapse].filter(Boolean).join(' · ') : '';
+    return `<div class="history-item" onclick="loadHistory(${e.id})">
+      <span class="history-item-movie">${e.object}</span>
+      <span class="history-item-dice">${diceSummary}</span>
+      <span class="history-item-time">${timeStr}</span>
+    </div>`;
+  }).join('');
+}
+
+function loadHistory(id) {
+  const history = getHistory();
+  const entry = history.find(e => e.id === id);
+  if (!entry) return;
+  // 还原全局状态
+  currentObject = entry.object;
+  currentDice = entry.dice;
+  currentDiceRegisters = entry.registers;
+  apiInterpText = entry.interpText || '';
+  currentConfidence = entry.confidence;
+  currentStyle = entry.style;
+  currentDirector = entry.director;
+  // 切换到结果页
+  document.getElementById('homeScreen').classList.add('hidden');
+  document.getElementById('rollingScreen').classList.remove('active');
+  document.getElementById('resultScreen').classList.add('active');
+  // 渲染结果
+  const objEl = document.getElementById('resultObject');
+  if (objEl) objEl.textContent = currentObject;
+  if (entry.interpText) {
+    document.getElementById('shareCardReview').innerHTML = highlightDiceWords(entry.interpText, entry.dice);
+  }
+  // 更新badge等
+  const styleTag = document.getElementById('styleTag');
+  if (styleTag && STYLE_PROFILES[currentStyle]) styleTag.textContent = STYLE_PROFILES[currentStyle].tag;
+  // 引擎标识
+  const engineBadgeEl = document.getElementById('resultEngineBadge');
+  if (engineBadgeEl) {
+    engineBadgeEl.className = 'api-engine-badge ' + (entry.engineMode === 'api' ? 'api' : 'template');
+    engineBadgeEl.textContent = entry.engineMode === 'api' ? 'AI' : '模板';
+  }
+  // 阅读模式标识
+  const modeBadgeEl = document.getElementById('readingModeBadge');
+  if (modeBadgeEl && entry.readingMode) {
+    modeBadgeEl.className = 'reading-mode-badge ' + entry.readingMode;
+    modeBadgeEl.textContent = entry.readingMode === 'inside' ? 'Inside' : entry.readingMode === 'around' ? 'Around' : 'Mixed';
+  }
+  // 导演徽章
+  const directorBadgeEl = document.getElementById('directorBadge');
+  if (directorBadgeEl) {
+    if (entry.director) {
+      directorBadgeEl.className = 'director-badge';
+      directorBadgeEl.textContent = '🎬 ' + entry.director.key;
+    } else {
+      directorBadgeEl.className = 'director-badge hidden';
+    }
+  }
+  // 数据来源
+  const dataSourceEl = document.getElementById('dataSourceBadge');
+  if (dataSourceEl) {
+    dataSourceEl.className = 'data-source-badge';
+    dataSourceEl.textContent = '';
+    dataSourceEl.style.display = 'none';
+  }
+  buildShareCard();
+}
+
+let _historyOpen = false;
+function toggleHistory() {
+  _historyOpen = !_historyOpen;
+  const listEl = document.getElementById('historyList');
+  if (listEl) listEl.classList.toggle('open', _historyOpen);
 }
 
 // --- 初始化 ---
 loadApiConfig();
+renderHistory();
 </script>
 </body>
 </html>
