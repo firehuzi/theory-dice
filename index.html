@@ -3279,16 +3279,14 @@ const API_PROVIDERS = {
     name: 'Ollama（本地）',
     endpoint: 'http://localhost:11434/v1/chat/completions',
     models: [
+      { value: 'hermes3:8b', label: 'Hermes 3 8B' },
+      { value: 'qwen3:0.6b', label: 'Qwen3 0.6B' },
+      { value: 'gemma4:q5', label: 'Gemma 4 E2B Q5' },
       { value: 'qwen2.5:14b', label: 'Qwen2.5 14B' },
       { value: 'qwen2.5:7b', label: 'Qwen2.5 7B' },
-      { value: 'qwen2.5:72b', label: 'Qwen2.5 72B' },
       { value: 'deepseek-r1:14b', label: 'DeepSeek-R1 14B' },
-      { value: 'deepseek-r1:7b', label: 'DeepSeek-R1 7B' },
-      { value: 'llama3.2:3b', label: 'Llama 3.2 3B' },
       { value: 'llama3.1:8b', label: 'Llama 3.1 8B' },
       { value: 'mistral:7b', label: 'Mistral 7B' },
-      { value: 'mistral-nemo:12b', label: 'Mistral Nemo 12B' },
-      { value: 'gemma2:9b', label: 'Gemma 2 9B' },
       { value: 'phi4:14b', label: 'Phi-4 14B' }
     ]
   }
