@@ -1,0 +1,3813 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>骰评 — 像随意观看一样去解读电影。</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="directors.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@400;500;600&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #FAFAF8;
+  --text: #1A1A1A;
+  --accent: #533483;
+  --coral: #E94560;
+  --light-accent: #E8DFF5;
+  --muted: #888;
+  --card-bg: #F0EDE8;
+  --serif: 'Noto Serif SC', 'Songti SC', 'SimSun', serif;
+  --sans: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-x: hidden;
+}
+
+/* === HOME SCREEN === */
+.home-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 2rem;
+  text-align: center;
+  transition: opacity 0.4s;
+  position: relative;
+}
+
+.home-screen.hidden { display: none; }
+
+.brand {
+  font-family: var(--serif);
+  font-size: 3.5rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  margin-bottom: 0.3rem;
+}
+
+.brand-sub {
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  color: var(--muted);
+  margin-bottom: 3rem;
+  letter-spacing: 0.02em;
+}
+
+.input-area {
+  margin-bottom: 2rem;
+}
+
+.input-label {
+  font-family: var(--serif);
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 1rem;
+}
+
+.input-field {
+  width: 320px;
+  padding: 0.8rem 1.2rem;
+  border: 2px solid var(--light-accent);
+  border-radius: 8px;
+  font-family: var(--serif);
+  font-size: 1.2rem;
+  text-align: center;
+  background: white;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.3s;
+}
+
+.input-field:focus {
+  border-color: var(--accent);
+}
+
+.roll-btn {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 1rem 2.5rem;
+  border-radius: 50px;
+  font-family: var(--sans);
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: transform 0.2s, background 0.3s;
+  margin-top: 1rem;
+}
+
+.roll-btn:hover {
+  transform: scale(1.05);
+  background: #6B4B9A;
+}
+
+.roll-btn:active {
+  transform: scale(0.95);
+}
+
+.roll-btn:hover {
+  transform: scale(1.05);
+  background: #6B4B9A;
+}
+
+.roll-btn:active {
+  transform: scale(0.95);
+}
+
+.dice-icon {
+  font-size: 1.4rem;
+  margin-right: 0.3rem;
+}
+
+/* === ROLLING SCREEN === */
+.rolling-screen {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 2rem;
+  text-align: center;
+}
+
+.rolling-screen.active { display: flex; }
+
+.roll-status {
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+  min-height: 1.5rem;
+  margin-bottom: 2rem;
+  transition: color 0.3s;
+}
+
+.roll-status.done {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.dice-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.dice-slot {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  width: 380px;
+}
+
+.slot-label {
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  width: 90px;
+  text-align: right;
+}
+
+.slot-value {
+  font-family: var(--serif);
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--text);
+  background: white;
+  border: 1px solid var(--light-accent);
+  padding: 0.4rem 1rem;
+  border-radius: 6px;
+  min-width: 180px;
+  text-align: center;
+  transition: border-color 0.3s, color 0.3s;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.slot-value.rolling {
+  border-color: var(--accent);
+  animation: slotSpin 0.1s steps(1) infinite;
+}
+
+.slot-value.settled {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--light-accent);
+}
+
+@keyframes slotSpin {
+  0% { opacity: 1; }
+  50% { opacity: 0.6; }
+  100% { opacity: 1; }
+}
+
+.object-display {
+  font-family: var(--serif);
+  font-size: 1.6rem;
+  color: var(--text);
+  background: var(--card-bg);
+  padding: 0.6rem 2rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+  border: 2px solid var(--light-accent);
+}
+
+/* === RESULT SCREEN === */
+.result-screen {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  padding: 2rem 2rem 4rem;
+  max-width: 600px;
+}
+
+.result-screen.active { display: flex; }
+
+/* Back to home button */
+.back-btn {
+  background: none;
+  border: none;
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0.4rem 0;
+  margin-bottom: 1.5rem;
+  transition: color 0.2s;
+  letter-spacing: 0.02em;
+}
+
+.back-btn:hover { color: var(--accent); }
+
+.back-arrow {
+  margin-right: 0.3rem;
+}
+
+.result-object {
+  font-family: var(--serif);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 0.5rem;
+}
+
+.result-object-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 2rem;
+}
+
+.structure-badge {
+  font-family: var(--sans);
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--coral);
+  background: rgba(233, 69, 96, 0.08);
+  border: 1px solid rgba(233, 69, 96, 0.3);
+  padding: 0.15rem 0.5rem;
+  border-radius: 3px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.structure-badge.hidden { display: none; }
+
+.style-tag {
+  font-family: var(--sans);
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: var(--accent);
+  background: rgba(107, 75, 154, 0.08);
+  border: 1px solid rgba(107, 75, 154, 0.25);
+  padding: 0.15rem 0.5rem;
+  border-radius: 3px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.chain {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 2.5rem;
+}
+
+.chain-node {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 1.5rem;
+  background: white;
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+  font-family: var(--serif);
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text);
+  min-width: 260px;
+  position: relative;
+}
+
+.chain-node:first-child {
+  border-left: 3px solid var(--coral);
+}
+
+.chain-node:last-child {
+  border-left: 3px solid var(--coral);
+  background: var(--light-accent);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.chain-node-label {
+  font-family: var(--sans);
+  font-size: 0.65rem;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  font-weight: 500;
+}
+
+.chain-arrow {
+  color: var(--muted);
+  font-size: 1.2rem;
+  line-height: 1;
+  margin: 0.1rem 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.chain-question {
+  font-family: var(--sans);
+  font-size: 0.62rem;
+  color: rgba(255,255,255,0.35);
+  margin: 0.08rem 0;
+  letter-spacing: 0.01em;
+  max-width: 120px;
+  text-align: center;
+}
+
+/* (Highlight styles for .share-card-review are defined below in the share-card section) */
+  font-size: 0.85em;
+  color: var(--coral);
+  background: rgba(233, 69, 96, 0.06);
+  border-left: 2px solid var(--coral);
+  padding: 0.1rem 0.4rem;
+  margin-left: 0.3rem;
+  font-style: italic;
+}
+
+/* === SHARE CARD === */
+.share-card-section {
+  margin-bottom: 2rem;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.share-card-label {
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-bottom: 0.8rem;
+  letter-spacing: 0.04em;
+}
+
+.share-card {
+  background: var(--bg);
+  border: 2px solid var(--accent);
+  border-radius: 16px;
+  padding: 2rem 2.5rem;
+  width: 420px;
+  max-width: 90vw;
+  position: relative;
+  overflow: hidden;
+}
+
+.share-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: linear-gradient(90deg, var(--accent), var(--coral));
+}
+
+.share-card-brand {
+  font-family: var(--serif);
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.1em;
+  margin-bottom: 0.1rem;
+}
+
+.share-card-sub {
+  font-family: var(--sans);
+  font-size: 0.65rem;
+  color: var(--muted);
+  margin-bottom: 1.2rem;
+}
+
+.share-card-object {
+  font-family: var(--serif);
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text);
+  text-align: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px dashed var(--light-accent);
+}
+
+.share-card-review-label {
+  font-family: var(--sans);
+  font-size: 0.7rem;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid var(--light-accent);
+  padding-bottom: 0.3rem;
+}
+
+.share-card-review {
+  font-family: var(--serif);
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--text);
+  margin-bottom: 1rem;
+}
+
+/* === API Fallback Details (折叠的错误提示) === */
+.api-fallback-details {
+  font-family: var(--sans);
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-bottom: 0.6rem;
+  padding: 0.2rem 0.4rem;
+  background: rgba(107,75,154,0.04);
+  border-left: 2px solid rgba(107,75,154,0.3);
+  border-radius: 3px;
+}
+.api-fallback-details summary {
+  cursor: pointer;
+  color: var(--muted);
+  user-select: none;
+}
+.api-fallback-details summary:hover {
+  color: var(--accent);
+}
+.api-fallback-msg {
+  margin-top: 0.4rem;
+  padding: 0.3rem 0.5rem;
+  color: var(--coral);
+  font-size: 0.7rem;
+  word-break: break-all;
+}
+
+/* === Highlight Styles (转到 share-card-review) === */
+.share-card-review .theory-word { color: var(--accent); font-weight: 600; }
+.share-card-review .collapse-word { color: var(--coral); font-weight: 600; }
+.share-card-review .structure-note {
+  display: inline;
+  font-size: 0.85em;
+  color: var(--coral);
+  background: rgba(233, 69, 96, 0.06);
+  border-left: 2px solid var(--coral);
+  padding: 0.1rem 0.4rem;
+  margin-right: 0.3rem;
+}
+
+.share-card-analysis-label {
+  font-family: var(--sans);
+  font-size: 0.7rem;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid var(--light-accent);
+  padding-bottom: 0.3rem;
+}
+
+.share-card-chain {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 0.8rem;
+}
+
+.share-card-node {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--serif);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+  padding: 0.2rem 0;
+}
+
+.share-card-node .node-label {
+  font-family: var(--sans);
+  font-size: 0.6rem;
+  color: var(--muted);
+  min-width: 60px;
+}
+
+.share-card-node.first-node {
+  color: var(--accent);
+}
+
+.share-card-node.last-node {
+  color: var(--coral);
+  font-weight: 700;
+}
+
+.share-card-arrow {
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+.share-card-confidence {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+  border-top: 1px dashed var(--light-accent);
+}
+
+.share-card-confidence .cf-label {
+  font-family: var(--sans);
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.share-card-confidence .cf-value {
+  font-family: var(--sans);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--coral);
+}
+
+.share-card-confidence .cf-unit {
+  font-family: var(--sans);
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.share-card-watermark {
+  font-family: var(--sans);
+  font-size: 0.6rem;
+  color: var(--muted);
+  text-align: center;
+  margin-top: 0.8rem;
+  opacity: 0.5;
+}
+
+.share-card-disclaimer {
+  font-family: var(--serif);
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-align: center;
+  margin-top: 0.6rem;
+  line-height: 1.6;
+  letter-spacing: 0.02em;
+  opacity: 0.7;
+}
+
+/* Share buttons */
+.share-area {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 3rem;
+}
+
+.share-btn {
+  padding: 0.6rem 1.5rem;
+  border-radius: 50px;
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.2s;
+  letter-spacing: 0.03em;
+}
+
+.share-btn:hover { transform: scale(1.05); }
+
+.share-copy {
+  background: var(--accent);
+  color: white;
+  border: none;
+}
+
+.share-save-card {
+  background: var(--coral);
+  color: white;
+  border: none;
+}
+
+.share-x {
+  background: white;
+  color: var(--text);
+  border: 1px solid var(--light-accent);
+}
+
+.share-x:hover { border-color: var(--accent); }
+
+/* Reveal the Joke */
+.reveal-area {
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.reveal-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  opacity: 0.4;
+  transition: opacity 0.3s;
+}
+
+.reveal-btn:hover { opacity: 0.8; }
+
+.reveal-text {
+  display: none;
+  font-family: var(--serif);
+  font-size: 0.85rem;
+  line-height: 1.8;
+  color: var(--muted);
+  max-width: 420px;
+  margin-top: 1rem;
+  padding: 1.2rem;
+  background: var(--card-bg);
+  border-radius: 8px;
+  border-left: 2px solid var(--accent);
+}
+
+.reveal-text.visible { display: block; }
+
+/* Reroll */
+.reroll-btn {
+  background: var(--card-bg);
+  border: 1px solid var(--light-accent);
+  color: var(--text);
+  padding: 0.8rem 2rem;
+  border-radius: 50px;
+  font-family: var(--sans);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  margin-bottom: 1.5rem;
+  transition: transform 0.2s;
+}
+
+.reroll-btn:hover {
+  transform: scale(1.05);
+  border-color: var(--accent);
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: var(--accent);
+  color: white;
+  padding: 0.8rem 1.5rem;
+  border-radius: 8px;
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  transition: transform 0.3s;
+  z-index: 999;
+}
+
+.toast.visible {
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  .brand { font-size: 2.6rem; }
+  .dice-slot { width: 300px; }
+  .slot-label { width: 70px; font-size: 0.7rem; }
+  .slot-value { font-size: 1.1rem; min-width: 150px; }
+  .chain-node { min-width: 220px; }
+  .input-field { width: 280px; }
+  .share-card { width: 340px; padding: 1.5rem; }
+  .share-card-brand { font-size: 1.3rem; }
+  .share-card-object { font-size: 1.2rem; }
+  .share-card-node { font-size: 0.85rem; }
+}
+
+/* === API CONFIG PANEL === */
+.api-config-toggle {
+  position: absolute;
+  top: 1.2rem;
+  right: 1.2rem;
+  background: rgba(107, 75, 154, 0.08);
+  border: 2px solid rgba(107, 75, 154, 0.3);
+  border-radius: 24px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent);
+  transition: border-color 0.3s, color 0.3s, background 0.3s, transform 0.2s, box-shadow 0.3s;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(107, 75, 154, 0.15);
+}
+
+.api-config-icon { font-size: 1rem; }
+.api-config-text { font-family: var(--sans); letter-spacing: 0.02em; }
+
+.api-config-toggle:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(107, 75, 154, 0.18);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(107, 75, 154, 0.2);
+}
+
+.api-config-toggle.active {
+  border-color: var(--accent);
+  color: white;
+  background: var(--accent);
+  box-shadow: 0 2px 12px rgba(107, 75, 154, 0.3);
+}
+
+.api-config-panel {
+  display: none;
+  margin-top: 1.5rem;
+  background: white;
+  border: 2px solid rgba(107, 75, 154, 0.25);
+  border-radius: 12px;
+  padding: 1.5rem 1.8rem;
+  width: 340px;
+  text-align: left;
+  animation: slideDown 0.3s ease;
+  box-shadow: 0 4px 20px rgba(107, 75, 154, 0.12);
+}
+
+.api-config-panel.visible { display: block; }
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.api-panel-title {
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 1rem;
+  letter-spacing: 0.03em;
+}
+
+.api-field-group {
+  margin-bottom: 0.8rem;
+}
+
+.api-field-label {
+  font-family: var(--sans);
+  font-size: 0.75rem;
+  color: var(--muted);
+  letter-spacing: 0.03em;
+  margin-bottom: 0.3rem;
+}
+
+.api-field-input {
+  width: 100%;
+  padding: 0.5rem 0.8rem;
+  border: 1px solid var(--light-accent);
+  border-radius: 6px;
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  color: var(--text);
+  background: var(--bg);
+  outline: none;
+  transition: border-color 0.3s;
+}
+
+.api-field-input:focus { border-color: var(--accent); }
+
+.api-field-select {
+  width: 100%;
+  padding: 0.5rem 0.8rem;
+  border: 1px solid var(--light-accent);
+  border-radius: 6px;
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  color: var(--text);
+  background: var(--bg);
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.3s;
+}
+
+.api-field-select:focus { border-color: var(--accent); }
+
+.api-mode-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.8rem;
+  padding: 0.8rem 1rem;
+  background: rgba(107, 75, 154, 0.06);
+  border: 1px solid rgba(107, 75, 154, 0.15);
+  border-radius: 10px;
+}
+
+.api-mode-label {
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.api-mode-switch {
+  position: relative;
+  width: 52px;
+  height: 28px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.api-mode-switch input {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  top: 0; left: 0;
+  cursor: pointer;
+  z-index: 2;
+  margin: 0;
+}
+
+.api-mode-switch .slider {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: #ccc;
+  border-radius: 28px;
+  transition: background 0.3s;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.15);
+}
+
+.api-mode-switch .slider::before {
+  content: '';
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  left: 3px;
+  bottom: 3px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.3s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.api-mode-switch .slider::after {
+  content: 'OFF';
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--sans);
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.03em;
+}
+
+.api-mode-switch input:checked + .slider {
+  background: var(--accent);
+  box-shadow: inset 0 1px 3px rgba(107, 75, 154, 0.3);
+}
+
+.api-mode-switch input:checked + .slider::before {
+  transform: translateX(24px);
+}
+
+.api-mode-switch input:checked + .slider::after {
+  content: 'ON';
+  left: 7px;
+  right: auto;
+}
+
+.api-engine-badge {
+  font-family: var(--sans);
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 3px;
+  letter-spacing: 0.04em;
+  display: inline-block;
+  margin-left: 0.4rem;
+}
+
+.api-engine-badge.template {
+  color: var(--muted);
+  background: rgba(136,136,136,0.1);
+  border: 1px solid rgba(136,136,136,0.25);
+}
+
+.api-engine-badge.api {
+  color: var(--accent);
+  background: rgba(107, 75, 154, 0.08);
+  border: 1px solid rgba(107, 75, 154, 0.25);
+}
+
+.api-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-left: 0.3rem;
+}
+
+.api-status-dot.off { background: var(--muted); }
+.api-status-dot.on { background: #4CAF50; }
+.api-status-dot.loading { background: var(--accent); animation: pulse 1s infinite; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.api-hint {
+  font-family: var(--sans);
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-top: 0.3rem;
+  line-height: 1.5;
+}
+
+.api-error {
+  font-family: var(--sans);
+  font-size: 0.75rem;
+  color: var(--coral);
+  margin-top: 0.3rem;
+}
+
+/* === Extraction Overlay === */
+.extraction-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(250,250,248,0.92);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  flex-direction: column;
+}
+
+.extraction-overlay.active { display: flex; }
+
+.extraction-spinner {
+  width: 36px; height: 36px;
+  border: 3px solid var(--light-accent);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.extraction-text {
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  color: var(--accent);
+  letter-spacing: 0.05em;
+}
+
+.extraction-sub {
+  font-family: var(--sans);
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-top: 0.5rem;
+}
+
+/* === Reading Mode Badge === */
+.reading-mode-badge {
+  font-family: var(--sans);
+  font-size: 0.55rem;
+  font-weight: 600;
+  padding: 0.12rem 0.4rem;
+  border-radius: 3px;
+  letter-spacing: 0.05em;
+  display: inline-block;
+  margin-left: 0.3rem;
+  text-transform: uppercase;
+}
+
+.reading-mode-badge.inside {
+  color: #2196F3;
+  background: rgba(33,150,243,0.08);
+  border: 1px solid rgba(33,150,243,0.25);
+}
+
+.reading-mode-badge.around {
+  color: #FF9800;
+  background: rgba(255,152,0,0.08);
+  border: 1px solid rgba(255,152,0,0.25);
+}
+
+.reading-mode-badge.mixed {
+  color: #9C27B0;
+  background: rgba(156,39,176,0.08);
+  border: 1px solid rgba(156,39,176,0.25);
+}
+
+/* === Chain Node Register Tag === */
+.chain-node-register {
+  font-family: var(--sans);
+  font-size: 0.45rem;
+  font-weight: 600;
+  padding: 0.05rem 0.2rem;
+  border-radius: 2px;
+  margin-left: 0.2rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.chain-node-register.inside {
+  color: #2196F3;
+  background: rgba(33,150,243,0.1);
+}
+
+.chain-node-register.around {
+  color: #FF9800;
+  background: rgba(255,152,0,0.1);
+}
+
+/* === Dice Lead === */
+.dice-lead {
+  font-family: var(--sans);
+  font-size: 0.75rem;
+  color: var(--accent);
+  letter-spacing: 0.05em;
+  margin-bottom: 0.4rem;
+  display: inline-block;
+}
+
+/* === Closing Question === */
+.closing-question {
+  font-family: var(--sans);
+  font-size: 0.82rem;
+  color: rgba(255,255,255,0.6);
+  border-top: 1px solid rgba(255,255,255,0.15);
+  padding-top: 0.4rem;
+  margin-top: 0.3rem;
+  display: block;
+}
+
+/* === Mode Hint === */
+.mode-hint {
+  font-family: var(--sans);
+  font-size: 0.75rem;
+  color: #FF9800;
+  background: rgba(255,152,0,0.06);
+  border: 1px solid rgba(255,152,0,0.2);
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  display: inline-block;
+  margin-bottom: 0.5rem;
+  font-style: italic;
+}
+
+/* === Data Source Badge === */
+.data-source-badge {
+  font-family: var(--sans);
+  font-size: 0.6rem;
+  font-weight: 500;
+  padding: 0.12rem 0.4rem;
+  border-radius: 3px;
+  letter-spacing: 0.04em;
+  display: inline-block;
+  margin-left: 0.3rem;
+}
+
+.data-source-badge.local {
+  color: #4CAF50;
+  background: rgba(76,175,80,0.08);
+  border: 1px solid rgba(76,175,80,0.25);
+}
+
+.data-source-badge.ai {
+  color: var(--accent);
+  background: rgba(107,75,154,0.08);
+  border: 1px solid rgba(107,75,154,0.25);
+}
+
+/* === Director Badge === */
+.director-badge {
+  font-family: var(--sans);
+  font-size: 0.55rem;
+  font-weight: 600;
+  padding: 0.12rem 0.4rem;
+  border-radius: 3px;
+  letter-spacing: 0.02em;
+  display: inline-block;
+  margin-left: 0.3rem;
+  color: #E91E63;
+  background: rgba(233,30,99,0.08);
+  border: 1px solid rgba(233,30,99,0.25);
+}
+.director-badge.hidden { display: none; }
+
+/* === Auto Extraction Row === */
+.auto-extraction-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.8rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--light-accent);
+}
+
+.auto-extraction-label {
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.auto-extraction-hint {
+  font-family: var(--sans);
+  font-size: 0.65rem;
+  color: var(--muted);
+  margin-top: 0.1rem;
+}
+
+/* === Caution Text === */
+.caution-text {
+  font-family: var(--sans);
+  font-size: 0.68rem;
+  color: rgba(255,255,255,0.25);
+  text-align: center;
+  margin-top: 0.6rem;
+  line-height: 1.6;
+  letter-spacing: 0.02em;
+}
+
+/* === Reading Mode Toggle === */
+.mode-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-top: 1rem;
+  margin-bottom: 0.3rem;
+}
+.mode-toggle-label {
+  font-family: var(--sans);
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.4);
+  letter-spacing: 0.04em;
+}
+.mode-toggle-btns {
+  display: flex;
+  gap: 0.25rem;
+  background: rgba(255,255,255,0.08);
+  border-radius: 6px;
+  padding: 2px;
+}
+.mode-btn {
+  font-family: var(--sans);
+  font-size: 0.7rem;
+  padding: 0.25rem 0.55rem;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(255,255,255,0.5);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.mode-btn.active {
+  background: rgba(255,255,255,0.15);
+  color: white;
+  font-weight: 600;
+}
+.mode-btn:hover:not(.active) {
+  color: white;
+}
+
+</style>
+</head>
+<body>
+
+<!-- HOME -->
+<div class="home-screen" id="homeScreen">
+  <button class="api-config-toggle" id="apiConfigToggle" onclick="toggleApiConfig()">
+    <span class="api-config-icon">⚙</span>
+    <span class="api-config-text">引擎配置</span>
+  </button>
+  <div class="brand">骰评</div>
+  <div class="brand-sub">用理论掷骰，为电影算命。</div>
+  <div class="input-area">
+    <div class="input-label">电影</div>
+    <input class="input-field" id="objectInput" type="text" placeholder="《寄生虫》" autofocus />
+  </div>
+
+  <div class="mode-toggle-row">
+    <span class="mode-toggle-label">阅读模式</span>
+    <div class="mode-toggle-btns" id="modeToggleBtns">
+      <button class="mode-btn active" data-mode="auto" onclick="setReadingMode('auto')">自动</button>
+      <button class="mode-btn" data-mode="inside" onclick="setReadingMode('inside')">Inside</button>
+      <button class="mode-btn" data-mode="around" onclick="setReadingMode('around')">Around</button>
+    </div>
+  </div>
+
+  <!-- API配置面板 -->
+  <div class="api-config-panel" id="apiConfigPanel">
+    <div class="api-panel-title">引擎配置</div>
+
+    <div class="api-mode-row">
+      <span class="api-mode-label">启用AI解读 <span class="api-engine-badge" id="engineBadge">模板</span></span>
+      <label class="api-mode-switch" for="apiModeToggle">
+        <input type="checkbox" id="apiModeToggle" onchange="toggleApiMode()">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="api-field-group">
+      <div class="api-field-label">API 服务</div>
+      <select class="api-field-select" id="apiProvider" onchange="onProviderChange()">
+        <option value="openai">OpenAI</option>
+        <option value="deepseek">DeepSeek</option>
+        <option value="ollama">Ollama（本地）</option>
+        <option value="custom">自定义</option>
+      </select>
+    </div>
+
+    <div class="api-field-group">
+      <div class="api-field-label">API Key</div>
+      <input class="api-field-input" id="apiKeyInput" type="password" placeholder="sk-..." oninput="saveApiConfig()">
+      <div class="api-hint">密钥仅存储在本地浏览器，不会上传至任何服务器。</div>
+    </div>
+
+    <div class="api-field-group">
+      <div class="api-field-label">模型</div>
+      <select class="api-field-select" id="apiModel" onchange="saveApiConfig()">
+        <option value="gpt-4o-mini">GPT-4o-mini</option>
+        <option value="gpt-4o">GPT-4o</option>
+        <option value="gpt-4.1-mini">GPT-4.1-mini</option>
+        <option value="gpt-4.1">GPT-4.1</option>
+      </select>
+    </div>
+
+    <div class="api-field-group" id="customEndpointGroup" style="display:none;">
+      <div class="api-field-label">自定义 Endpoint</div>
+      <input class="api-field-input" id="apiEndpoint" type="text" placeholder="https://api.example.com/v1/chat/completions" oninput="saveApiConfig()">
+    </div>
+
+    <div class="api-hint" style="margin-top:0.8rem; text-align:center;">模板引擎：免费，本地模板拼接<br>API引擎：调用LLM，更高质量的解读</div>
+
+    <div class="auto-extraction-row" id="autoExtractionRow">
+      <div>
+        <span class="auto-extraction-label">自动提取未知电影 <span style="font-size:0.65rem;color:var(--muted);">（推荐）</span></span>
+        <div class="auto-extraction-hint">FILM_DB未命中时，AI自动提取结构数据驱动骰子</div>
+      </div>
+      <label class="api-mode-switch">
+        <input type="checkbox" id="autoExtractionToggle" onchange="saveApiConfig()">
+        <span class="slider"></span>
+      </label>
+    </div>
+  </div>
+
+  <button class="roll-btn" id="rollBtn" onclick="startRoll()">
+    <span class="dice-icon">🎲</span> 掷
+  </button>
+  <div class="caution-text">当模式比观察更重要时，解读就沦为套路。<br/>让骰子帮你越狱。</div>
+</div>
+
+<!-- ROLLING -->
+<div class="rolling-screen" id="rollingScreen">
+  <div class="roll-status" id="rollStatus">掷骰中...</div>
+  <div class="object-display" id="objectDisplay"></div>
+  <div class="dice-slots" id="diceSlots"></div>
+</div>
+
+<!-- Extraction Overlay -->
+<div class="extraction-overlay" id="extractionOverlay">
+  <div class="extraction-spinner"></div>
+  <div class="extraction-text" id="extractionText">正在提取电影结构...</div>
+  <div class="extraction-sub" id="extractionSub">AI 分析《电影名》的主题、冲突、空间与理论适配度</div>
+</div>
+
+<!-- RESULT -->
+<div class="result-screen" id="resultScreen">
+  <button class="back-btn" onclick="goHome()"><span class="back-arrow">←</span>返回首页</button>
+  <div class="result-object-row">
+    <div class="result-object" id="resultObject"></div>
+    <span class="structure-badge hidden" id="structureBadge">🔥 结构增强</span>
+    <span class="reading-mode-badge inside" id="readingModeBadge">Inside</span>
+    <span class="style-tag" id="styleTag"></span>
+    <span class="api-engine-badge template" id="resultEngineBadge">模板</span>
+    <span class="data-source-badge local" id="dataSourceBadge">本地数据</span>
+    <span class="director-badge hidden" id="directorBadge"></span>
+  </div>
+
+  <button class="reroll-btn" onclick="reroll()">🎲 再掷一次</button>
+
+  <!-- Share Card（主视图） -->
+  <div class="share-card-section">
+    <div class="share-card" id="shareCard">
+      <div class="share-card-brand">骰评</div>
+      <div class="share-card-sub">像随意观看一样去解读电影。</div>
+      <div class="share-card-object" id="shareCardObject"></div>
+      <div class="share-card-review-label">评论</div>
+      <div class="share-card-review" id="shareCardReview"></div>
+      <div class="share-card-analysis-label">结构分析</div>
+      <div class="share-card-chain" id="shareCardChain"></div>
+      <div class="share-card-confidence">
+        <span class="cf-label">置信度</span>
+        <span class="cf-value" id="shareCardConfidence"></span>
+        <span class="cf-unit">%</span>
+      </div>
+      <div class="share-card-watermark">🎲 骰评 · <span id="shareCardStyle"></span></div>
+      <div class="share-card-disclaimer">当模式比观察更重要时，解读就沦为套路。请谨慎投掷。</div>
+    </div>
+  </div>
+
+  <div class="share-area">
+    <button class="share-btn share-copy" onclick="copyResult()">复制结果</button>
+    <button class="share-btn share-save-card" onclick="saveShareCard()">保存卡片</button>
+    <button class="share-btn share-x" onclick="shareToX()">分享到 X</button>
+  </div>
+  <div class="reveal-area">
+    <button class="reveal-btn" onclick="revealJoke()">🎓</button>
+    <div class="reveal-text" id="revealText">
+      这个生成器不是在嘲笑理论。<br><br>
+      它是在让人看见：任何话语都会逐渐发展出可复用的模式。<br><br>
+      当模式变得比观察更重要时，解读就有沦为套路的危险。<br><br>
+      请谨慎投掷。
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// === 中文词库 ===
+const DICE = {
+  framework: {
+    label: '理论框架',
+    words: ['拉康', '齐泽克', '福柯', '鲍德里亚', '德里达', '本雅明', '巴特勒', '德勒兹', '巴特', '阿多诺', '马克思', '弗洛伊德']
+  },
+  problem: {
+    label: '核心问题',
+    inside: ['欲望', '身份', '权力', '身体', '意义', '主体', '表征', '自由', '真理', '时间'],
+    around: ['工业逻辑', '观众合约', 'IP循环', '注意力经济', '平台算法', '文化需求', '票房策略', '意识形态功能', '跨国资本', '流量逻辑']
+  },
+  object: {
+    label: '分析对象',
+    inside: ['家庭', '国家', '技术', '空间', '性别', '阶级', '媒介', '语言', '记忆', '自然'],
+    around: ['IP宇宙', '类型公式', '全球市场', '主题公园', '社交媒体', '算法推荐', '流媒体平台', '粉丝经济', '跨国资本空间', '短视频生态']
+  },
+  director: {
+    label: '导演签名',
+    inside: ['场面调度', '长镜头', '蒙太奇', '视觉母题', '声画关系', '空间构建', '色彩语法', '剪辑逻辑', '非职业演员', '叙事节奏'],
+    around: ['IP捆绑导演', '类型固化', '制片人主导', '代笔挂名', '续集绑定', '票房驱动', '明星搭配', '算法剪辑', '工业流水线', '流量导演']
+  },
+  mechanism: {
+    label: '运作机制',
+    inside: ['意识形态', '规训', '拟像', '延异', '景观', '霸权', '操演性', '重复', '移置', '升华'],
+    around: ['CGI饱和', '景观扁平化', '算法剪辑', '短视频化视觉', 'IP运营', '类型复制', '情感工程', '注意力捕获', '算法分发', '数据驱动创作']
+  },
+  context: {
+    label: '宏观语境',
+    inside: ['晚期资本主义', '数字社会', '后殖民处境', '新自由主义', '全球化', '晚期现代性', '生命政治', '后真相时代', '人类世', '信息时代',
+             '新浪潮', '新现实主义', '表现主义', '蒙太奇学派', '左岸派', '直接电影', '道格玛95', '诗意现实主义', '亚太新浪潮', '后现代电影'],
+    around: ['后制片时代', '流媒体运动', 'CGI革命', 'IP宇宙化', '粉丝经济驱动', '算法推荐时代', '影展经济学', '跨国合制', '短视频美学', '全球市场标准化']
+  },
+  collapse: {
+    label: '崩塌方向',
+    inside: ['主体性崩塌', '意义危机', '身份消解', '共同体碎裂', '差异抹除', '真实性丧失', '作者之死', '符号内爆', '真实界隐没', '历史否认'],
+    around: ['类型公式耗尽', 'IP循环失灵', '娱乐工业自我复制', '注意力商品化', '情感工程失效', '算法推荐同质化', '观众合约破裂', '票房逻辑崩盘', '平台生态内卷', '文化需求错位']
+  }
+};
+
+const DICE_ORDER = ['framework', 'problem', 'object', 'director', 'mechanism', 'context', 'collapse'];
+
+// === Inside/Around 双轨系统 ===
+// 每颗骰子可选 register: 'inside'（内部阅读）或 'around'（外部阅读）
+// framework 只有 inside 词面（理论框架不分内外）
+// context 现为双轨（含电影运动Inside + 工业运动Around）
+const DICE_REGISTER = {
+  framework: 'inside',  // 理论框架：始终内部
+  problem: 'dual',      // 核心问题：双轨
+  object: 'dual',       // 分析对象：双轨
+  director: 'dual',     // 导演签名：双轨
+  mechanism: 'dual',    // 运作机制：双轨
+  context: 'dual',      // 宏观语境（含运动）：双轨
+  collapse: 'dual'      // 崩塌方向：双轨
+};
+
+// 获取骰子词面（根据 register）
+function getDiceWords(pool, register) {
+  if (DICE_REGISTER[pool] === 'inside') return pool.words || DICE[pool].words;
+  if (register === 'around') return DICE[pool].around || DICE[pool].words;
+  return DICE[pool].inside || DICE[pool].words;
+}
+
+// 判断电影偏向哪种阅读模式
+// 简化版：根据 culturalAffinity 字段，默认 inside
+function getReadingMode(film) {
+  if (!film) return 'inside';
+  // ① 有明确 readingMode 字段 → 直接用
+  if (film.readingMode) return film.readingMode;
+  // ② 有 culturalSymptom 数据 → around 偏重
+  if (film.culturalSymptom) return 'around';
+  // ③ 结构节点类电影 → inside
+  if (film.type === 'structure_node') return 'inside';
+  // ④ 默认 inside
+  return 'inside';
+}
+
+// 为每颗骰子决定 register（混合模式：整体偏向 readingMode，但每颗骰子有一定概率走另一条路）
+function decideDiceRegisters(film) {
+  // 如果用户强制指定了阅读模式，覆盖 film 的自动判断
+  const baseMode = _forcedReadingMode || getReadingMode(film);
+  const registers = {};
+  DICE_ORDER.forEach(pool => {
+    if (DICE_REGISTER[pool] === 'inside') {
+      registers[pool] = 'inside';
+    } else {
+      // 75% 走基模式，25% 走另一条路（保证骰子不会全部同向）
+      registers[pool] = Math.random() < 0.75 ? baseMode : (baseMode === 'inside' ? 'around' : 'inside');
+    }
+  });
+  return registers;
+}
+
+// === 结构张力标签→骰子池权重映射（TENSION_DICE_MAP） ===
+// 核心设计：每个张力标签同时权重多个骰子池，产生跨链一致性
+// 内部张力（Inside）→ 权重 inside 词面
+// 外部张力（Around）→ 权重 around 词面
+// ① Subject Tension → problem + framework + mechanism
+// ② Power Modality → mechanism + object + framework
+// ③ Spatial Logic → object + mechanism
+// ④ Desire Economy → problem + mechanism + framework
+// ⑤ Narrative Form → context
+// ⑥ Cultural Symptom → problem.around + object.around + mechanism.around + collapse.around
+const TENSION_DICE_MAP = {
+  // ── ① 主体张力（Inside）──
+  'self vs system':   { problem:{权力:5,主体:4,自由:3}, mechanism:{规训:3,意识形态:3,霸权:2}, framework:{马克思:2,福柯:2,阿多诺:2}, director:{空间构建:4,场面调度:3,非职业演员:2} },
+  'self vs desire':   { problem:{欲望:5,主体:4,身体:3}, mechanism:{移置:3,升华:2,重复:2}, framework:{齐泽克:2,拉康:2,弗洛伊德:2}, director:{视觉母题:4,剪辑逻辑:3} },
+  'self vs family':   { problem:{权力:3,欲望:3,身份:2}, object:{家庭:5,空间:3,性别:2}, mechanism:{规训:2,操演性:2}, director:{空间构建:4,叙事节奏:3} },
+  'self vs others':   { problem:{身份:4,权力:3,表征:2}, object:{阶级:3,性别:2,媒介:2}, director:{非职业演员:4,长镜头:3} },
+  'self vs identity': { problem:{身份:5,主体:4,意义:3}, mechanism:{操演性:3,重复:3,延异:2}, framework:{巴特勒:2,德里达:2}, director:{视觉母题:3,剪辑逻辑:4} },
+  'self vs nature':   { problem:{身体:4,自由:3,时间:2}, object:{自然:5,空间:3,记忆:2}, director:{长镜头:5,空间构建:3} },
+
+  // ── ② 权力机制（Inside）──
+  'disciplinary':     { mechanism:{规训:5,意识形态:4,霸权:2}, object:{国家:3,空间:3,技术:2}, framework:{福柯:3}, director:{空间构建:5,长镜头:3} },
+  'sovereign':        { mechanism:{霸权:5,意识形态:3,景观:2}, object:{国家:4,阶级:3,技术:2}, director:{场面调度:3,空间构建:3} },
+  'distributed':      { mechanism:{景观:4,霸权:3,意识形态:2}, object:{技术:3,媒介:2,阶级:2}, framework:{马克思:2}, director:{声画关系:3,视觉母题:2} },
+  'invisible':        { mechanism:{意识形态:5,拟像:3,景观:2}, object:{媒介:4,技术:3,语言:2}, director:{视觉母题:4,声画关系:3} },
+  'domestic':         { mechanism:{规训:3,操演性:2,重复:2}, object:{家庭:5,性别:3,空间:2}, framework:{福柯:2}, director:{空间构建:4,场面调度:3} },
+
+  // ── ③ 空间结构（Inside）──
+  'enclosed':         { object:{家庭:5,空间:4,身体:3}, mechanism:{规训:3,操演性:2}, director:{空间构建:5,长镜头:3} },
+  'porous':           { object:{媒介:4,阶级:3,技术:3}, mechanism:{景观:2,拟像:2}, director:{声画关系:3,蒙太奇:3} },
+  'vertical':         { object:{国家:5,阶级:4,技术:3}, mechanism:{霸权:3,规训:2}, director:{空间构建:4,场面调度:3} },
+  'fragmented':       { object:{媒介:4,语言:3,记忆:3}, mechanism:{延异:3,拟像:2}, director:{剪辑逻辑:4,蒙太奇:3} },
+  'liminal':          { object:{空间:4,自然:3,记忆:2}, problem:{身份:2,时间:2}, director:{长镜头:5,色彩语法:3} },
+
+  // ── ④ 欲望机制（Inside）──
+  'repression':       { problem:{欲望:5,主体:3,意义:2}, mechanism:{移置:4,升华:3,重复:2}, framework:{弗洛伊德:2,拉康:2} },
+  'circulation':      { problem:{欲望:3,权力:2,表征:2}, mechanism:{景观:3,重复:3,意识形态:2} },
+  'excess':           { problem:{欲望:5,身体:4,自由:3}, mechanism:{移置:3,重复:2,升华:2}, framework:{齐泽克:2} },
+  'substitution':     { problem:{意义:4,表征:3,欲望:3}, mechanism:{拟像:4,景观:3,再编码:2} },
+  'prohibition':      { problem:{权力:4,欲望:3,自由:2}, mechanism:{规训:4,意识形态:3} },
+
+  // ── ⑤ 叙事形态（Inside）──
+  'linear':           { context:{晚期资本主义:3,晚期现代性:3,新自由主义:2} },
+  'fragmented_n':     { context:{后真相时代:4,数字社会:3,信息时代:2} },
+  'cyclical':         { context:{晚期资本主义:3,生命政治:2,人类世:2} },
+  'episodic':         { context:{新自由主义:3,全球化:2,后殖民处境:2} },
+  'recursive':        { context:{数字社会:3,后真相时代:2,信息时代:3} },
+
+  // ── ⑥ 文化症候张力（Around）──
+  // 商业片的"张力"不在文本内部，而在工业/观众/平台层面
+  'industrial_formula':  { problem:{工业逻辑:5,IP循环:4,类型公式:3}, object:{IP宇宙:5,全球市场:3,类型公式:3}, mechanism:{CGI饱和:3,类型复制:4,IP运营:3}, collapse:{类型公式耗尽:5,IP循环失灵:4} },
+  'audience_contract':   { problem:{观众合约:5,文化需求:4,注意力经济:3}, object:{粉丝经济:4,社交媒体:3,流媒体平台:3}, mechanism:{情感工程:4,注意力捕获:3,算法分发:2}, collapse:{观众合约破裂:5,注意力商品化:4} },
+  'platform_algorithm':  { problem:{平台算法:5,流量逻辑:4,注意力经济:3}, object:{算法推荐:5,短视频生态:4,社交媒体:3}, mechanism:{算法剪辑:4,短视频化视觉:3,数据驱动创作:3}, collapse:{算法推荐同质化:5,平台生态内卷:4} },
+  'cultural_demand':     { problem:{文化需求:5,意识形态功能:4,跨国资本:3}, object:{全球市场:4,跨国资本空间:3,主题公园:3}, mechanism:{景观扁平化:3,情感工程:4,类型复制:3}, collapse:{文化需求错位:5,票房逻辑崩盘:4} },
+  'ip_cycle':            { problem:{IP循环:5,票房策略:4,工业逻辑:3}, object:{IP宇宙:5,主题公园:4,全球市场:3}, mechanism:{IP运营:4,类型复制:3,CGI饱和:3}, collapse:{IP循环失灵:5,娱乐工业自我复制:4,类型公式耗尽:3} }
+};
+
+// === 张力维度归属表（tag→dimension） ===
+const TENSION_DIM = {
+  'self vs system':'subject', 'self vs desire':'subject', 'self vs family':'subject',
+  'self vs others':'subject', 'self vs identity':'subject', 'self vs nature':'subject',
+  'disciplinary':'power', 'sovereign':'power', 'distributed':'power',
+  'invisible':'power', 'domestic':'power',
+  'enclosed':'spatial', 'porous':'spatial', 'vertical':'spatial',
+  'fragmented':'spatial', 'liminal':'spatial',
+  'repression':'desire', 'circulation':'desire', 'excess':'desire',
+  'substitution':'desire', 'prohibition':'desire',
+  'linear':'narrative', 'fragmented_n':'narrative', 'cyclical':'narrative',
+  'episodic':'narrative', 'recursive':'narrative',
+  // ── 文化症候维度（Around）──
+  'industrial_formula':'cultural', 'audience_contract':'cultural',
+  'platform_algorithm':'cultural', 'cultural_demand':'cultural', 'ip_cycle':'cultural'
+};
+
+// === 兼容性矩阵（理论→问题的亲和度） ===
+const AFFINITY = {
+  '拉康':    { '欲望': 5, '身份': 4, '主体': 4, '身体': 3, '意义': 2, '权力': 1, '表征': 3, '自由': 1, '真理': 1, '时间': 2 },
+  '齐泽克':  { '意识形态': 0, '欲望': 5, '身份': 3, '主体': 4, '意义': 3, '权力': 2, '表征': 2, '自由': 1, '真理': 1, '时间': 1, '身体': 2 },
+  '福柯':    { '权力': 5, '身体': 5, '身份': 3, '自由': 3, '主体': 3, '欲望': 1, '意义': 2, '表征': 2, '真理': 4, '时间': 2 },
+  '鲍德里亚':{ '表征': 5, '意义': 4, '欲望': 3, '身份': 3, '权力': 2, '身体': 1, '主体': 2, '自由': 1, '真理': 2, '时间': 1 },
+  '德里达':  { '表征': 4, '意义': 5, '身份': 3, '权力': 2, '主体': 3, '欲望': 1, '身体': 1, '自由': 2, '真理': 4, '时间': 3 },
+  '本雅明':  { '时间': 5, '意义': 4, '表征': 3, '记忆': 0, '权力': 2, '身体': 1, '身份': 2, '欲望': 1, '主体': 2, '自由': 3 },
+  '巴特勒':  { '身份': 5, '身体': 5, '权力': 3, '表征': 3, '欲望': 2, '意义': 2, '主体': 3, '自由': 2, '真理': 1, '时间': 1 },
+  '德勒兹':  { '欲望': 4, '身体': 4, '身份': 3, '自由': 5, '意义': 1, '权力': 2, '主体': 2, '表征': 2, '真理': 1, '时间': 3 },
+  '巴特':    { '表征': 5, '意义': 4, '身份': 2, '权力': 2, '欲望': 2, '身体': 1, '主体': 2, '自由': 1, '真理': 2, '时间': 1 },
+  '阿多诺':  { '权力': 3, '意义': 4, '主体': 3, '表征': 3, '欲望': 1, '身份': 2, '身体': 1, '自由': 2, '真理': 3, '时间': 2 },
+  '马克思':  { '权力': 5, '欲望': 3, '身份': 3, '身体': 2, '意义': 2, '主体': 3, '表征': 1, '自由': 2, '真理': 1, '时间': 2 },
+  '弗洛伊德':{ '欲望': 5, '主体': 5, '身体': 4, '身份': 3, '表征': 3, '意义': 2, '权力': 2, '自由': 1, '真理': 2, '时间': 1 }
+};
+
+// 问题→机制的亲和度
+const PROBLEM_MECH = {
+  '欲望': { '移置': 5, '升华': 4, '重复': 3, '意识形态': 2, '规训': 1, '拟像': 2, '延异': 2, '景观': 2, '霸权': 1, '操演性': 1 },
+  '身份': { '操演性': 5, '重复': 4, '意识形态': 3, '霸权': 3, '规训': 3, '拟像': 2, '移置': 2, '升华': 1, '延异': 2, '景观': 2 },
+  '权力': { '规训': 5, '霸权': 5, '意识形态': 4, '操演性': 3, '景观': 2, '拟像': 2, '重复': 2, '移置': 1, '升华': 1, '延异': 1 },
+  '身体': { '规训': 5, '操演性': 4, '升华': 3, '移置': 2, '意识形态': 2, '霸权': 2, '拟像': 1, '重复': 2, '延异': 1, '景观': 2 },
+  '意义': { '延异': 5, '拟像': 4, '景观': 4, '意识形态': 3, '霸权': 2, '规训': 2, '操演性': 1, '重复': 2, '移置': 1, '升华': 1 },
+  '主体': { '意识形态': 4, '规训': 3, '操演性': 3, '移置': 3, '升华': 2, '霸权': 2, '拟像': 2, '延异': 2, '重复': 2, '景观': 2 },
+  '表征': { '拟像': 5, '景观': 4, '延异': 4, '意识形态': 3, '霸权': 2, '规训': 1, '操演性': 2, '重复': 2, '移置': 1, '升华': 1 },
+  '自由': { '规训': 4, '霸权': 3, '意识形态': 3, '操演性': 2, '景观': 2, '拟像': 2, '重复': 1, '移置': 2, '延异': 2, '升华': 1 },
+  '真理': { '意识形态': 4, '拟像': 4, '景观': 3, '霸权': 3, '规训': 3, '延异': 3, '操演性': 1, '重复': 1, '移置': 1, '升华': 1 },
+  '时间': { '延异': 4, '重复': 4, '景观': 3, '移置': 2, '升华': 2, '意识形态': 2, '规训': 1, '拟像': 2, '霸权': 1, '操演性': 1 }
+};
+
+// 机制→崩塌的亲和度
+const MECH_COLLAPSE = {
+  '意识形态': { '主体性崩塌': 5, '意义危机': 4, '身份消解': 3, '共同体碎裂': 3, '差异抹除': 3, '真实性丧失': 2, '作者之死': 2, '符号内爆': 2, '真实界隐没': 3, '历史否认': 2 },
+  '规训':     { '主体性崩塌': 5, '身份消解': 4, '自由': 0, '共同体碎裂': 3, '意义危机': 2, '差异抹除': 2, '真实性丧失': 2, '作者之死': 1, '符号内爆': 1, '真实界隐没': 2, '历史否认': 1 },
+  '拟像':     { '符号内爆': 5, '真实性丧失': 5, '真实界隐没': 4, '意义危机': 4, '主体性崩塌': 3, '身份消解': 3, '作者之死': 3, '差异抹除': 2, '共同体碎裂': 2, '历史否认': 2 },
+  '延异':     { '意义危机': 5, '差异抹除': 0, '作者之死': 4, '符号内爆': 3, '真实界隐没': 2, '主体性崩塌': 2, '身份消解': 2, '共同体碎裂': 2, '真实性丧失': 2, '历史否认': 1 },
+  '景观':     { '真实性丧失': 5, '符号内爆': 4, '意义危机': 4, '主体性崩塌': 3, '身份消解': 2, '共同体碎裂': 3, '差异抹除': 2, '作者之死': 2, '真实界隐没': 3, '历史否认': 2 },
+  '霸权':     { '共同体碎裂': 5, '差异抹除': 4, '身份消解': 3, '主体性崩塌': 3, '意义危机': 2, '真实性丧失': 2, '作者之死': 1, '符号内爆': 1, '真实界隐没': 2, '历史否认': 2 },
+  '操演性':   { '身份消解': 5, '主体性崩塌': 4, '共同体碎裂': 3, '意义危机': 2, '差异抹除': 2, '真实性丧失': 1, '作者之死': 1, '符号内爆': 1, '真实界隐没': 1, '历史否认': 1 },
+  '重复':     { '差异抹除': 4, '意义危机': 4, '身份消解': 3, '主体性崩塌': 3, '共同体碎裂': 2, '真实性丧失': 2, '作者之死': 2, '符号内爆': 2, '真实界隐没': 2, '历史否认': 1 },
+  '移置':     { '真实界隐没': 5, '意义危机': 3, '主体性崩塌': 4, '身份消解': 2, '共同体碎裂': 2, '差异抹除': 1, '真实性丧失': 2, '作者之死': 1, '符号内爆': 1, '历史否认': 1 },
+  '升华':     { '真实界隐没': 4, '主体性崩塌': 3, '意义危机': 3, '身份消解': 2, '共同体碎裂': 1, '差异抹除': 1, '真实性丧失': 2, '作者之死': 1, '符号内爆': 1, '历史否认': 1 }
+};
+
+// === Around 亲和度矩阵（外部词面之间的关系） ===
+// 外部问题→外部机制的亲和度
+const AROUND_MECH_AFF = {
+  '工业逻辑':   { '类型复制': 5, 'IP运营': 4, 'CGI饱和': 3, '数据驱动创作': 3, '情感工程': 2, '注意力捕获': 2, '算法分发': 2, '算法剪辑': 1 },
+  'IP循环':     { 'IP运营': 5, '类型复制': 4, 'CGI饱和': 3, '数据驱动创作': 3, '情感工程': 2, '注意力捕获': 2 },
+  '类型公式':   { '类型复制': 5, '情感工程': 4, 'CGI饱和': 3, 'IP运营': 3, '注意力捕获': 3, '数据驱动创作': 2 },
+  '注意力经济': { '注意力捕获': 5, '算法分发': 4, '短视频化视觉': 3, '情感工程': 3, '数据驱动创作': 3, '类型复制': 2 },
+  '平台算法':   { '算法分发': 5, '算法剪辑': 4, '短视频化视觉': 4, '数据驱动创作': 4, '注意力捕获': 3 },
+  '文化需求':   { '情感工程': 5, '景观扁平化': 4, '类型复制': 3, '注意力捕获': 3, 'IP运营': 2 },
+  '观众合约':   { '情感工程': 5, '注意力捕获': 4, '类型复制': 3, 'IP运营': 2, '算法分发': 2 },
+  '票房策略':   { '类型复制': 4, 'IP运营': 5, 'CGI饱和': 4, '情感工程': 3, '数据驱动创作': 3 },
+  '意识形态功能':{ '景观扁平化': 5, '情感工程': 4, '类型复制': 3, '注意力捕获': 3 },
+  '流量逻辑':   { '算法分发': 5, '短视频化视觉': 4, '算法剪辑': 4, '注意力捕获': 4, '数据驱动创作': 3 },
+  '跨国资本':   { 'IP运营': 4, '类型复制': 3, 'CGI饱和': 3, '全球市场': 0, '数据驱动创作': 2 }
+};
+
+// 外部机制→外部崩塌的亲和度
+const AROUND_MECH_COLLAPSE = {
+  'CGI饱和':          { '类型公式耗尽': 5, '娱乐工业自我复制': 4, '注意力商品化': 3, '观众合约破裂': 2 },
+  '景观扁平化':       { '文化需求错位': 5, '注意力商品化': 4, '情感工程失效': 4, '平台生态内卷': 3 },
+  '算法剪辑':         { '算法推荐同质化': 5, '平台生态内卷': 4, '注意力商品化': 3, '观众合约破裂': 2 },
+  '短视频化视觉':     { '注意力商品化': 5, '算法推荐同质化': 4, '平台生态内卷': 4, '文化需求错位': 3 },
+  'IP运营':           { 'IP循环失灵': 5, '类型公式耗尽': 4, '娱乐工业自我复制': 4, '票房逻辑崩盘': 3 },
+  '类型复制':         { '类型公式耗尽': 5, '娱乐工业自我复制': 5, 'IP循环失灵': 3, '观众合约破裂': 3 },
+  '情感工程':         { '情感工程失效': 5, '观众合约破裂': 4, '文化需求错位': 4, '注意力商品化': 3 },
+  '注意力捕获':       { '注意力商品化': 5, '观众合约破裂': 3, '平台生态内卷': 3, '文化需求错位': 2 },
+  '算法分发':         { '算法推荐同质化': 5, '平台生态内卷': 4, '文化需求错位': 3, '票房逻辑崩盘': 2 },
+  '数据驱动创作':     { '平台生态内卷': 4, '类型公式耗尽': 3, '娱乐工业自我复制': 3, '算法推荐同质化': 3 }
+};
+
+// === 理论框架→导演签名亲和度（Inside） ===
+const FRAMEWORK_DIRECTOR_AFF = {
+  '拉康':    { '视觉母题': 4, '长镜头': 2, '剪辑逻辑': 3, '色彩语法': 2, '叙事节奏': 2, '场面调度': 3 },
+  '齐泽克':  { '视觉母题': 3, '蒙太奇': 3, '声画关系': 3, '剪辑逻辑': 4, '叙事节奏': 3, '场面调度': 2 },
+  '福柯':    { '空间构建': 5, '长镜头': 4, '场面调度': 4, '非职业演员': 3, '叙事节奏': 2, '声画关系': 3 },
+  '鲍德里亚':{ '视觉母题': 5, '声画关系': 4, '色彩语法': 3, '场面调度': 3, '蒙太奇': 2, '剪辑逻辑': 3 },
+  '德里达':  { '剪辑逻辑': 5, '叙事节奏': 4, '声画关系': 3, '蒙太奇': 3, '视觉母题': 2, '空间构建': 2 },
+  '本雅明':  { '长镜头': 5, '叙事节奏': 4, '空间构建': 3, '非职业演员': 3, '场面调度': 4, '声画关系': 2 },
+  '巴特勒':  { '非职业演员': 4, '操演性': 0, '视觉母题': 3, '色彩语法': 3, '叙事节奏': 2, '场面调度': 3 },
+  '德勒兹':  { '长镜头': 5, '空间构建': 4, '叙事节奏': 4, '场面调度': 4, '色彩语法': 3, '声画关系': 3 },
+  '巴特':    { '视觉母题': 4, '色彩语法': 3, '声画关系': 3, '剪辑逻辑': 3, '场面调度': 2, '叙事节奏': 2 },
+  '阿多诺':  { '叙事节奏': 4, '声画关系': 4, '空间构建': 3, '场面调度': 3, '长镜头': 3, '剪辑逻辑': 2 },
+  '马克思':  { '空间构建': 4, '非职业演员': 3, '叙事节奏': 3, '场面调度': 3, '长镜头': 2, '视觉母题': 2 },
+  '弗洛伊德':{ '视觉母题': 5, '剪辑逻辑': 4, '叙事节奏': 4, '声画关系': 3, '色彩语法': 2, '场面调度': 3 }
+};
+
+// === 外部问题→外部导演签名亲和度（Around） ===
+const AROUND_PROBLEM_DIRECTOR_AFF = {
+  '工业逻辑':   { 'IP捆绑导演': 5, '工业流水线': 5, '类型固化': 4, '制片人主导': 4, '续集绑定': 3 },
+  'IP循环':     { 'IP捆绑导演': 5, '续集绑定': 5, '类型固化': 4, '票房驱动': 4, '制片人主导': 3 },
+  '类型公式':   { '类型固化': 5, '工业流水线': 4, '明星搭配': 4, '票房驱动': 3, '算法剪辑': 3 },
+  '注意力经济': { '流量导演': 5, '算法剪辑': 4, '票房驱动': 4, '明星搭配': 3, '代笔挂名': 2 },
+  '平台算法':   { '算法剪辑': 5, '流量导演': 5, '工业流水线': 3, '制片人主导': 3, '票房驱动': 3 },
+  '文化需求':   { '明星搭配': 4, '票房驱动': 4, '类型固化': 3, 'IP捆绑导演': 3, '流量导演': 2 },
+  '观众合约':   { '明星搭配': 5, '类型固化': 4, '票房驱动': 4, '续集绑定': 3, '工业流水线': 2 },
+  '票房策略':   { '票房驱动': 5, '明星搭配': 4, 'IP捆绑导演': 4, '续集绑定': 4, '类型固化': 3 },
+  '意识形态功能':{ '制片人主导': 5, '工业流水线': 4, 'IP捆绑导演': 3, '流量导演': 3, '算法剪辑': 2 },
+  '流量逻辑':   { '流量导演': 5, '算法剪辑': 5, '票房驱动': 4, '明星搭配': 3, '代笔挂名': 3 },
+  '跨国资本':   { '工业流水线': 4, '制片人主导': 4, '明星搭配': 3, 'IP捆绑导演': 3, '票房驱动': 3 }
+};
+
+// === 电影结构数据库（ConStruct Film Atlas 简版） ===
+// themes→boost problem/object池; conflicts→桥接句; spaces/motifs→boost object池; theoryFit→boost framework池
+const FILM_DB = {
+  // 🇺🇸 美国电影
+  '黑客帝国': { en:'The Matrix', themes:['现实','自由','控制'], conflicts:['人vs系统','真实vs虚拟'], spaces:['现实城市','机器世界','接入空间'], motifs:['代码','红蓝药丸','镜子'], chars:['Neo','Trinity','Morpheus'], theoryFit:{齐泽克:5,鲍德里亚:5,德勒兹:5,福柯:4,拉康:4}, tensions:{subject:['self vs system','self vs identity'], power:['invisible','disciplinary'], spatial:['porous','liminal'], desire:['substitution'], narrative:['recursive']} },
+  '搏击俱乐部': { en:'Fight Club', themes:['身份','消费','异化'], conflicts:['自我vs分裂','消费社会'], spaces:['公寓','地下俱乐部','办公空间'], motifs:['肥皂','血','爆炸'], chars:['Narrator','Tyler'], theoryFit:{齐泽克:5,马克思:5,拉康:4,福柯:3} },
+  '盗梦空间': { en:'Inception', themes:['梦','记忆','现实'], conflicts:['意识控制','现实不确定'], spaces:['梦层','城市折叠','潜意识'], motifs:['陀螺','电梯','崩塌城市'], chars:['Cobb','Mal'], theoryFit:{拉康:5,德勒兹:4,齐泽克:4} },
+  '小丑': { en:'Joker', themes:['权力结构','异化','精神崩溃','城市暴力','社会冷漠'], conflicts:['个体心理崩溃vs社会结构压迫','可见秩序vs隐形暴力','正常性定义vs边缘主体'], spaces:['破败公寓','阶梯城市','电视演播室','地铁系统'], motifs:['笑声','楼梯','电视屏幕','面具'], chars:['Arthur Fleck','母亲','Thomas Wayne','电视主持人'], theoryFit:{福柯:5,齐泽克:5,拉康:4,马克思:4,德勒兹:3}, tensions:{subject:['self vs system','self vs identity'], power:['invisible','disciplinary'], spatial:['vertical','porous'], desire:['repression'], narrative:['linear']} },
+  '教父': { en:'The Godfather', themes:['权力','家族','秩序'], conflicts:['家庭vs权力结构'], spaces:['家族庄园','纽约城市'], motifs:['橙子','门','黑暗'], chars:['Michael','Vito'], theoryFit:{福柯:4,马克思:4,拉康:3} },
+  '星际穿越': { en:'Interstellar', themes:['时间','爱','生存'], conflicts:['人类vs宇宙'], spaces:['地球','太空','五维空间'], motifs:['书架','手表','黑洞'], chars:['Cooper','Murph'], theoryFit:{德勒兹:4,拉康:3} },
+  '泰坦尼克号': { en:'Titanic', themes:['爱','阶级','灾难'], conflicts:['阶级差异','生存'], spaces:['船舱','海洋'], motifs:['海水','钢琴','冰山'], chars:['Jack','Rose'], theoryFit:{马克思:4,拉康:3} },
+  '银翼杀手': { en:'Blade Runner', themes:['人性','记忆','存在'], conflicts:['人vs复制人'], spaces:['雨夜城市','工业废墟'], motifs:['雨','眼睛','光'], chars:['Deckard','Rachel'], theoryFit:{德勒兹:5,拉康:4,福柯:4} },
+  '她': { en:'Her', themes:['爱','技术','孤独'], conflicts:['人vsAI'], spaces:['城市','屏幕空间'], motifs:['声音','耳机','光'], chars:['Theodore','Samantha'], theoryFit:{拉康:4,德勒兹:4} },
+  '2001太空漫游': { en:'2001: A Space Odyssey', themes:['进化','意识','超越'], conflicts:['人类vs机器','进化vs停滞'], spaces:['太空舱','星际门','白色房间'], motifs:['眼睛','骨头','HAL红眼'], chars:['Bowman','HAL 9000'], theoryFit:{德勒兹:5,拉康:4,鲍德里亚:3} },
+  '发条橙': { en:'A Clockwork Orange', themes:['自由','规训','暴力'], conflicts:['自由vs规训','欲望vs控制'], spaces:['牛奶吧','监狱','治疗室'], motifs:['眼睛','牛奶','贝多芬'], chars:['Alex'], theoryFit:{福柯:5,齐泽克:4,巴特勒:3}, tensions:{subject:['self vs system','self vs desire'], power:['disciplinary'], spatial:['enclosed'], desire:['repression','excess'], narrative:['episodic']} },
+  '肖申克的救赎': { en:'The Shawshank Redemption', themes:['自由','希望','规训'], conflicts:['自由vs规训','制度vs个体'], spaces:['监狱','牢房','隧道','海边'], motifs:['墙','隧道','海报','海'], chars:['Andy','Red'], theoryFit:{福柯:5,德勒兹:3,齐泽克:3} },
+  '银翼杀手2049': { en:'Blade Runner 2049', themes:['真实性','记忆','身份'], conflicts:['真实vs复制','记忆vs身份'], spaces:['废墟城市','蛋白质农场','DNA档案室'], motifs:['记忆球','木马','雨'], chars:['K','Deckard'], theoryFit:{鲍德里亚:5,拉康:4,德里达:3} },
+  '降临': { en:'Arrival', themes:['时间','语言','选择'], conflicts:['线性vs圆形时间','语言vs理解'], spaces:['飞船','军事基地','湖边'], motifs:['文字','时间','水'], chars:['Louise','Ian'], theoryFit:{德里达:5,本雅明:4,拉康:3} },
+  '穆赫兰道': { en:'Mulholland Drive', themes:['幻象','欲望','身份'], conflicts:['幻象vs真实','欲望vs嫉妒'], spaces:['好莱坞公寓','穆赫兰道','酒吧'], motifs:['钥匙','蓝色盒子','咖啡'], chars:['Betty/Diane','Rita/Camilla'], theoryFit:{拉康:5,齐泽克:4,鲍德里亚:4} },
+  '黑暗骑士': { en:'The Dark Knight', themes:['秩序','混沌','正义'], conflicts:['秩序vs混沌','正义vs暴力'], spaces:['哥谭城','医院','摩天大楼'], motifs:['面具','火','硬币'], chars:['Batman','Joker'], theoryFit:{齐泽克:5,拉康:4,福柯:3} },
+  '楚门的世界': { en:'The Truman Show', themes:['真实性','自由','景观'], conflicts:['真实vs虚构','自由vs控制'], spaces:['巨型穹顶','小镇','海洋'], motifs:['镜子','门','天空','摄像机'], chars:['Truman','Christof'], theoryFit:{鲍德里亚:5,福柯:4,德勒兹:3} },
+  '瞬息全宇宙': { en:'Everything Everywhere All at Once', themes:['身份','家庭','意义'], conflicts:['多元身份vs单一自我','虚无vs意义'], spaces:['多元宇宙','洗衣店','IRS办公室'], motifs:['眼睛','贝果','鼠鼠'], chars:['Evelyn','Joy'], theoryFit:{德勒兹:5,拉康:4,齐泽克:3} },
+  '哪吒之魔童降世': { en:'Ne Zha', themes:['身份','命运','家庭'], conflicts:['天命vs自我','规训vs反抗'], spaces:['山河','龙宫','天界'], motifs:['混天绑','火','莲花'], chars:['哪吒','敖丙'], theoryFit:{拉康:5,福柯:4,齐泽克:3} },
+  '低俗小说': { en:'Pulp Fiction', themes:['暴力','命运','偶然性'], conflicts:['叙事碎片化','道德模糊'], spaces:['餐厅','汽车','公寓'], motifs:['枪','对话','时间错位'], chars:['Jules','Vincent'], theoryFit:{德勒兹:4,齐泽克:4} },
+  '社交网络': { en:'The Social Network', themes:['权力','技术','孤独'], conflicts:['友谊vs资本化'], spaces:['宿舍','法庭','网络空间'], motifs:['屏幕','代码','会议'], chars:['Zuckerberg'], theoryFit:{福柯:4,马克思:4,德勒兹:4} },
+  '出租车司机': { en:'Taxi Driver', themes:['异化','孤独','暴力'], conflicts:['个体vs城市'], spaces:['夜晚城市','车内'], motifs:['镜子','枪','雨'], chars:['Travis'], theoryFit:{福柯:4,拉康:4} },
+  '现代启示录': { en:'Apocalypse Now', themes:['战争','疯狂','权力'], conflicts:['理性vs混乱'], spaces:['河流','战场','丛林'], motifs:['火','河流','直升机'], chars:['Kurtz','Willard'], theoryFit:{福柯:4,德勒兹:4} },
+  '老无所依': { en:'No Country for Old Men', themes:['命运','暴力','虚无'], conflicts:['人vs无意义暴力'], spaces:['沙漠','汽车旅馆'], motifs:['硬币','枪'], chars:['Chigurh','Llewelyn'], theoryFit:{拉康:4,齐泽克:4} },
+  '荒野猎人': { en:'The Revenant', themes:['生存','创伤','自然'], conflicts:['人vs自然'], spaces:['雪原','森林'], motifs:['熊','火','血'], chars:['Glass'], theoryFit:{德勒兹:4,马克思:3} },
+  '爆裂鼓手': { en:'Whiplash', themes:['纪律','天赋','压迫'], conflicts:['学生vs权威'], spaces:['音乐教室','舞台'], motifs:['鼓','汗','血'], chars:['Andrew','Fletcher'], theoryFit:{福柯:5,拉康:3} },
+  '遗传厄运': { en:'Hereditary', themes:['家庭','创伤','命运'], conflicts:['家庭结构崩塌'], spaces:['房屋','密闭空间'], motifs:['玩具','尘','剪影'], chars:['Annie','Peter'], theoryFit:{拉康:5,弗洛伊德:5} },
+  '黑天鹅': { en:'Black Swan', themes:['身体','分裂','完美'], conflicts:['自我vs自我'], spaces:['舞台','镜子空间'], motifs:['羽毛','镜像','指甲'], chars:['Nina'], theoryFit:{弗洛伊德:5,拉康:5,齐泽克:4} },
+  '闪灵': { en:'The Shining', themes:['疯狂','家庭','孤立'], conflicts:['理性vs崩溃'], spaces:['酒店','雪山'], motifs:['电梯血','双胞胎','打字机'], chars:['Jack'], theoryFit:{弗洛伊德:5,福柯:4} },
+  '逃出绝命镇': { en:'Get Out', themes:['种族','身体','控制'], conflicts:['身体占有','意识剥夺'], spaces:['郊区住宅'], motifs:['茶杯','摄影','催眠'], chars:['Chris'], theoryFit:{福柯:5,齐泽克:4} },
+  '雪国列车': { en:'Snowpiercer', themes:['阶级','生存','系统'], conflicts:['封闭阶级结构'], spaces:['列车'], motifs:['车厢','冰'], chars:['Curtis'], theoryFit:{马克思:5,福柯:4} },
+  '月光男孩': { en:'Moonlight', themes:['身份','性别','成长'], conflicts:['自我认同'], spaces:['城市','海边'], motifs:['水','光'], chars:['Chiron'], theoryFit:{拉康:5,巴特:4} },
+  '狗镇': { en:'Dogville', themes:['社会','权力','暴力'], conflicts:['个体vs社群'], spaces:['舞台空间'], motifs:['绳索','标记'], chars:['Grace'], theoryFit:{福柯:5,齐泽克:4} },
+
+  // 🇫🇷 法国电影
+  '精疲力尽': { en:'Breathless', themes:['自由','青年','犯罪'], conflicts:['个体vs社会秩序'], spaces:['巴黎街头','酒店'], motifs:['烟','汽车','镜头跳切'], chars:['Michel','Patricia'], theoryFit:{福柯:4,巴特:3} },
+  '四百击': { en:'The 400 Blows', themes:['成长','规训','反叛'], conflicts:['儿童vs权威'], spaces:['学校','街道','海边'], motifs:['跑步','窗户','监视'], chars:['Antoine'], theoryFit:{福柯:5,拉康:4} },
+  '天使爱美丽': { en:'Amélie', themes:['孤独','幻想','爱'], conflicts:['自我封闭vs世界'], spaces:['巴黎','咖啡馆'], motifs:['红色','照片','石像'], chars:['Amélie'], theoryFit:{巴特:4,拉康:3} },
+  '蓝色是最温暖的颜色': { en:'Blue Is the Warmest Color', themes:['欲望','身份','爱'], conflicts:['自我认同','情感关系'], spaces:['房间','城市'], motifs:['蓝色','食物','触碰'], chars:['Adèle','Emma'], theoryFit:{拉康:5,福柯:3} },
+  '克莱奥的5到7': { en:'Cléo from 5 to 7', themes:['死亡','时间','存在'], conflicts:['等待','意识变化'], spaces:['巴黎街道'], motifs:['镜子','钟','步行'], chars:['Cléo'], theoryFit:{巴特:4,德勒兹:3} },
+  '龙虾': { en:'The Lobster', themes:['爱','制度','强制关系'], conflicts:['单身vs社会规则'], spaces:['酒店','森林'], motifs:['动物','身体转化'], chars:['David'], theoryFit:{福柯:5,齐泽克:4} },
+  '军中乐园': { en:'Beau Travail', themes:['欲望','纪律','嫉妒'], conflicts:['欲望vs纪律','嫉妒vs服从'], spaces:['军营','海滩','沙漠','舞池'], motifs:['身体','音乐','汗水'], chars:['Galoup','Sentain'], theoryFit:{福柯:5,巴特勒:5,拉康:4} },
+  '爱': { en:'Amour', themes:['爱','老化','死亡'], conflicts:['身体衰退','情感维系'], spaces:['公寓','医院'], motifs:['水','病','静止'], chars:['老夫妻'], theoryFit:{拉康:4,福柯:3} },
+  '神圣车行': { en:'Holy Motors', themes:['身份','表演','现实'], conflicts:['自我vs角色'], spaces:['城市','车'], motifs:['面具','变形','手'], chars:['Monsieur Oscar'], theoryFit:{德勒兹:5,拉康:5} },
+
+  // 🇯🇵 日本电影
+  '东京物语': { en:'Tokyo Story', themes:['家庭','时间','疏离'], conflicts:['代际关系'], spaces:['家庭','城市'], motifs:['火车','榻榻米'], chars:['老夫妇'], theoryFit:{拉康:4,本雅明:4} },
+  '千与千寻': { en:'Spirited Away', themes:['成长','欲望','转化'], conflicts:['儿童vs世界'], spaces:['灵界','浴场'], motifs:['名字','河流','面具'], chars:['Chihiro'], theoryFit:{德勒兹:4,拉康:4} },
+  '午夜凶铃': { en:'Ringu', themes:['恐惧','媒介','死亡'], conflicts:['技术传播'], spaces:['家庭','电视'], motifs:['录像带','水'], chars:['Sadako'], theoryFit:{福柯:4,齐泽克:4} },
+  '大逃杀': { en:'Battle Royale', themes:['生存','权力','青年'], conflicts:['学生vs国家'], spaces:['岛屿'], motifs:['武器','编号'], chars:['学生群体'], theoryFit:{福柯:5,马克思:4} },
+  '驾驶我的车': { en:'Drive My Car', themes:['记忆','创伤','沟通'], conflicts:['内在vs表达'], spaces:['车','舞台'], motifs:['语言','沉默'], chars:['Yusuke'], theoryFit:{拉康:4,巴特:4} },
+  '你的名字': { en:'Your Name', themes:['时间','身份','连接'], conflicts:['命运交错'], spaces:['城市','乡村'], motifs:['彗星','交换身体'], chars:['Taki','Mitsuha'], theoryFit:{德勒兹:4,拉康:4} },
+  '七武士': { en:'Seven Samurai', themes:['秩序','生存','牺牲'], conflicts:['秩序vs生存','武士vs农民'], spaces:['村庄','稻田','暴雨战场'], motifs:['雨','泥','旗帜','长枪'], chars:['勘兵卫','菊千代'], theoryFit:{福柯:4,齐泽克:4,本雅明:3} },
+  '罗生门': { en:'Rashomon', themes:['真相','叙事','欲望'], conflicts:['真相vs叙事','记忆vs谎言'], spaces:['森林','法庭','罗生门'], motifs:['阳光','刀','镜子','风'], chars:['樵夫','武士','妻子'], theoryFit:{德里达:5,巴特:5,拉康:4} },
+  '小偷家族': { en:'Shoplifters', themes:['家庭','非正式关系','血缘','共犯','生存'], conflicts:['血缘vs共犯','偷窃vs生存','法律vs情感'], spaces:['狭小公寓','便利店','游泳池','城市边缘'], motifs:['食物','火','头发','偷窃'], chars:['信代','治','祥太','临时家庭'], theoryFit:{福柯:4,巴特勒:4,马克思:4,齐泽克:3} },
+  '攻壳机动队': { en:'Ghost in the Shell', themes:['身份','身体','意识'], conflicts:['身体vs意识','身份vs记忆'], spaces:['网络空间','城市','水面'], motifs:['壳','镜','水','网络'], chars:['草薙素子','巴特'], theoryFit:{鲍德里亚:4,拉康:4,德勒兹:3} },
+  '生之欲': { en:'Ikiru', themes:['死亡','意义','官僚系统'], conflicts:['个体vs制度'], spaces:['政府办公室','公园'], motifs:['秋千','文件'], chars:['Watanabe'], theoryFit:{本雅明:4,福柯:4} },
+  '完美的日子': { en:'Perfect Days', themes:['日常','孤独','重复'], conflicts:['简单生活vs意义缺失'], spaces:['东京厕所','城市'], motifs:['树','音乐','光'], chars:['Hirayama'], theoryFit:{德勒兹:4,巴特:3} },
+  '回声': { en:'Cure', themes:['记忆','催眠','暴力'], conflicts:['理性vs无意识'], spaces:['城市','室内'], motifs:['刀','问号'], chars:['警察','神秘者'], theoryFit:{弗洛伊德:5,拉康:4} },
+  '切肤之爱': { en:'Audition', themes:['欲望','权力','惩罚'], conflicts:['爱vs控制'], spaces:['公寓','室内'], motifs:['袋子','针'], chars:['Aoyama','Asami'], theoryFit:{齐泽克:4,拉康:5} },
+  '无人知晓': { en:'Nobody Knows', themes:['家庭','遗弃','生存'], conflicts:['儿童vs社会'], spaces:['公寓'], motifs:['食物','沉默'], chars:['儿童群体'], theoryFit:{马克思:4,福柯:4} },
+  '未麻的部屋': { en:'Perfect Blue', themes:['身份','媒体','分裂'], conflicts:['真实vs虚拟身份'], spaces:['公寓','舞台'], motifs:['镜子','摄像','雨'], chars:['Mima'], theoryFit:{拉康:5,福柯:4} },
+  '阿基拉': { en:'Akira', themes:['权力','身体','失控'], conflicts:['技术vs身体变异'], spaces:['新东京'], motifs:['爆炸','能量','血'], chars:['Kaneda','Tetsuo'], theoryFit:{德勒兹:5,福柯:4} },
+  '被嫌弃的松子的一生': { en:'Memories of Matsuko', themes:['爱','堕落','记忆'], conflicts:['期待vs现实'], spaces:['城市','房间'], motifs:['颜色','音乐'], chars:['Matsuko'], theoryFit:{拉康:4,巴特:4} },
+
+  // 🇰🇷 韩国电影
+  '寄生虫': { en:'Parasite', themes:['阶级','空间','欲望'], conflicts:['贫富','渗透','依附'], spaces:['地下室','豪宅','楼梯'], motifs:['气味','雨','食物'], chars:['Kim家','Park家'], theoryFit:{齐泽克:5,马克思:5,福柯:4}, tensions:{subject:['self vs system','self vs family'], power:['distributed','domestic'], spatial:['vertical','enclosed'], desire:['circulation','substitution'], narrative:['linear']} },
+  '老男孩': { en:'Oldboy', themes:['复仇','控制','记忆'], conflicts:['自由vs操控'], spaces:['房间','监禁'], motifs:['锤子','走廊'], chars:['Oh Dae-su'], theoryFit:{齐泽克:5,拉康:5,福柯:4} },
+  '杀人的回忆': { en:'Memories of Murder', themes:['暴力','无解','权力'], conflicts:['真相不可达'], spaces:['农村','工厂'], motifs:['雨','犯罪现场'], chars:['警察'], theoryFit:{福柯:5,马克思:3} },
+  '燃烧': { en:'Burning', themes:['阶级','欲望','模糊现实'], conflicts:['不确定性'], spaces:['城市','温室'], motifs:['火','猫','消失'], chars:['Jong-su','Ben'], theoryFit:{齐泽克:4,拉康:5} },
+  '釜山行': { en:'Train to Busan', themes:['生存','群体','恐惧'], conflicts:['个体vs群体'], spaces:['火车'], motifs:['封闭空间','僵尸'], chars:['Seok-woo'], theoryFit:{福柯:4} },
+  '决定离开': { en:'Decision to Leave', themes:['欲望','调查','模糊'], conflicts:['爱vs真相'], spaces:['山','城市'], motifs:['手机','雾'], chars:['Hae-joon'], theoryFit:{拉康:5} },
+  '小姐': { en:'The Handmaiden', themes:['欲望','欺骗','权力'], conflicts:['阶级vs情感'], spaces:['庄园','房间'], motifs:['书','手','监视'], chars:['Sook-hee','Lady'], theoryFit:{福柯:5,拉康:5} },
+  '母亲': { en:'Mother', themes:['家庭','犯罪','保护'], conflicts:['母性vs真相'], spaces:['城市','农村'], motifs:['针','跳舞'], chars:['母亲'], theoryFit:{弗洛伊德:5,拉康:4} },
+  '看见恶魔': { en:'I Saw the Devil', themes:['复仇','暴力','极限'], conflicts:['正义vs野蛮'], spaces:['夜晚城市'], motifs:['刀','雨'], chars:['侦探','杀手'], theoryFit:{齐泽克:4,福柯:4} },
+  '哭声': { en:'The Wailing', themes:['恐惧','信仰','不确定性'], conflicts:['理性vs超自然'], spaces:['村庄','森林'], motifs:['病','雨'], chars:['警察'], theoryFit:{弗洛伊德:5,拉康:4} },
+
+  // 🇨🇳 中国大陆电影
+  '英雄': { en:'Hero', themes:['国家','叙事','权力'], conflicts:['统一vs个体'], spaces:['宫殿','战场'], motifs:['色彩','剑'], chars:['无名','秦王'], theoryFit:{福柯:5,马克思:4} },
+  '大红灯笼高高挂': { en:'Raise the Red Lantern', themes:['权力','女性','制度'], conflicts:['结构性压迫'], spaces:['庭院','宅邸'], motifs:['灯笼','仪式'], chars:['颂莲','妾室'], theoryFit:{福柯:5,拉康:4,巴特勒:4} },
+  '流浪地球': { en:'The Wandering Earth', themes:['生存','国家','技术'], conflicts:['人类vs宇宙'], spaces:['地球','工程系统'], motifs:['引擎','冰'], chars:['刘培强'], theoryFit:{马克思:4,德勒兹:3} },
+  '贾樟柯': { themes:['现代化','流动','消失'], conflicts:['传统vs资本'], spaces:['城市','工地'], motifs:['摄像机','灰尘'], chars:['普通人'], theoryFit:{本雅明:4,马克思:5} },
+  '霸王别姬': { en:'Farewell My Concubine', themes:['身份','身体','意识形态'], conflicts:['身份vs角色','艺术vs政治'], spaces:['戏台','梨园','京城'], motifs:['剑','戏服','镜子','血'], chars:['程蝶衣','段小楼'], theoryFit:{巴特勒:5,拉康:4,齐泽克:3} },
+  '让子弹飞': { en:'Let the Bullets Fly', themes:['权力','反抗','真相'], conflicts:['权力vs反抗','革命vs投机'], spaces:['鹅城','碉楼','广场'], motifs:['子弹','银子','麻将','椅子'], chars:['张麻子','黄四郎'], theoryFit:{齐泽克:5,福柯:4,马克思:3} },
+  '隐入尘烟': { en:'Return to Dust', themes:['边缘','土地','沉默'], conflicts:['边缘vs中心','身体vs土地'], spaces:['土房','田地','集市'], motifs:['驴','麦子','土','雨'], chars:['马有铁','曹贵英'], theoryFit:{福柯:4,本雅明:3,阿多诺:3} },
+  '活着': { en:'To Live', themes:['生存','忍耐','时间'], conflicts:['生存vs毁灭','个体vs历史'], spaces:['农村','城镇','炼钢炉'], motifs:['皮影','棺材','血','粮'], chars:['福贵','家珍'], theoryFit:{福柯:3,齐泽克:3,阿多诺:3} },
+  '站台': { en:'Platform', themes:['变迁','青年','时间'], conflicts:['集体vs历史'], spaces:['小镇','舞台'], motifs:['音乐','灯光'], chars:['青年群体'], theoryFit:{本雅明:5,马克思:4} },
+  '三峡好人': { en:'Still Life', themes:['消失','城市','重建'], conflicts:['人vs历史'], spaces:['三峡','废墟'], motifs:['水','爆破'], chars:['普通人'], theoryFit:{马克思:5,本雅明:4} },
+  '江湖儿女': { en:'Ash Is Purest White', themes:['爱','暴力','时间'], conflicts:['情感vs社会变迁'], spaces:['城市','河流'], motifs:['火','舞'], chars:['Qiao'], theoryFit:{拉康:4,马克思:4} },
+  '八佰': { en:'The Eight Hundred', themes:['战争','集体','记忆'], conflicts:['生存vs国家'], spaces:['战场','河'], motifs:['旗帜','血'], chars:['士兵'], theoryFit:{福柯:4,马克思:5} },
+
+  // 📖 经典文学 · 结构增强节点
+  // 金瓶梅不是普通条目——它是骰子系统的极端校准样本
+  // 🔥 欲望系统极值（齐泽克/拉康权重拉满）
+  // 🧱 消费社会原型（比寄生虫更底层）
+  // 🧠 权力微观化极端模型（家庭=权力装置+交易系统）
+  '金瓶梅': { en:'Jin Ping Mei', type:'structure_node', themes:['欲望','消费','家庭结构','权力关系','物质沉溺'], conflicts:['欲望vs秩序','个体欲望vs社会伦理','财富积累vs道德崩解'], spaces:['家庭内部空间','商人宅邸','私密房间','社会交易场域'], motifs:['身体','金钱交换','宴席','礼物','窥视'], chars:['西门庆','潘金莲','李瓶儿','庞春梅'], theoryFit:{马克思:5,福柯:5,齐泽克:5,拉康:4,鲍德里亚:5}, interpNotes:['欲望不再是心理结构，而是物质交换逻辑','家庭成为微观权力与消费单元','享乐与惩罚结构循环生成'], tensions:{subject:['self vs desire','self vs family'], power:['domestic','distributed'], spatial:['enclosed'], desire:['excess','circulation'], narrative:['episodic']} },
+
+  // 🇭🇰 中国香港电影
+  '花样年华': { en:'In the Mood for Love', themes:['欲望','克制','时间'], conflicts:['爱的不可达'], spaces:['楼道','房间'], motifs:['雨','旗袍'], chars:['周慕云','苏丽珍'], theoryFit:{拉康:5,巴特:4} },
+  '重庆森林': { en:'Chungking Express', themes:['爱','偶然','孤独','等待','时间'], conflicts:['情感错位','相遇vs错过'], spaces:['快餐店','公寓','重庆大厦'], motifs:['罐头','凤梨','跑步','电话'], chars:['何志武','阿菲'], theoryFit:{巴特:5,本雅明:4,拉康:4,鲍德里亚:3} },
+  '无间道': { en:'Infernal Affairs', themes:['身份','双重性','权力','忠诚','背叛'], conflicts:['身份vs卧底','忠诚vs背叛','警察vs黑帮'], spaces:['警局','黑帮','天台','城市','高楼'], motifs:['佛像','录音','天台','电话','电梯'], chars:['陈永仁','刘建明'], theoryFit:{福柯:5,拉康:4,巴特勒:4} },
+
+  // 🇮🇹 意大利电影
+  '8½': { en:'8½', themes:['创作','幻象','欲望'], conflicts:['创作vs自我','现实vs幻象'], spaces:['片场','温泉','回忆场景'], motifs:['帽子','女人','梦','火车'], chars:['Guido'], theoryFit:{拉康:5,巴特:4,德里达:3} },
+  '偷自行车的人': { en:'Bicycle Thieves', themes:['生存','尊严','贫困'], conflicts:['生存vs尊严','父子vs贫困'], spaces:['罗马街头','市场','教堂'], motifs:['自行车','雨','报纸'], chars:['Antonio','Bruno'], theoryFit:{福柯:4,本雅明:3,阿多诺:3} },
+  '甜蜜的生活': { en:'La Dolce Vita', themes:['欲望','空虚','现代性'], conflicts:['快乐vs虚无'], spaces:['罗马夜生活'], motifs:['雕塑','派对','泳池'], chars:['Marcello'], theoryFit:{本雅明:4,巴特:4} },
+
+  // 🇦🇹 奥地利电影
+  '第七大陆': { en:'The Seventh Continent', themes:['家庭','虚无','逃离'], conflicts:['社会失败'], spaces:['房屋','工业空间'], motifs:['食物','毁灭'], chars:['家庭'], theoryFit:{马克思:4,福柯:4} },
+  '趣味游戏': { en:'Funny Games', themes:['暴力','媒介','观众'], conflicts:['现实vs观看'], spaces:['房屋','封闭空间'], motifs:['遥控器','游戏'], chars:['施暴者'], theoryFit:{齐泽克:5,福柯:4} },
+
+  // 🇧🇪 比利时电影
+  '让娜·迪尔曼': { en:'Jeanne Dielman', themes:['日常','压抑','劳动'], conflicts:['重复vs崩溃'], spaces:['厨房','公寓'], motifs:['家务','水'], chars:['Jeanne'], theoryFit:{福柯:5,马克思:4} },
+
+  // 🇸🇪 瑞典电影
+  '假面': { en:'Persona', themes:['身份','沉默','分裂'], conflicts:['自我vs他者'], spaces:['医院','海边'], motifs:['面具','静默'], chars:['女演员','护士'], theoryFit:{拉康:5,巴特:4} },
+
+  // 🇩🇪 德国电影
+  '玛丽亚·布劳恩的婚姻': { en:'The Marriage of Maria Braun', themes:['爱情','生存','历史'], conflicts:['爱情vs生存','个人vs历史'], spaces:['废墟','豪宅','火车站'], motifs:['戒指','烟','废墟','时钟'], chars:['玛丽亚','赫尔曼'], theoryFit:{福柯:4,阿多诺:4,齐泽克:3} },
+  '柏林亚历山大广场': { en:'Berlin Alexanderplatz', themes:['犯罪','社会','失败'], conflicts:['个体vs城市结构'], spaces:['柏林街头'], motifs:['工业','灯光','雨'], chars:['Franz Biberkopf'], theoryFit:{福柯:5,马克思:4} },
+  '白丝带': { en:'The White Ribbon', themes:['纪律','暴力','社会结构'], conflicts:['权力隐形化'], spaces:['村庄','学校'], motifs:['白丝带','监视'], chars:['村民'], theoryFit:{福柯:5,拉康:3} },
+  '柏林苍穹下': { en:'Wings of Desire', themes:['观察','存在','爱'], conflicts:['天使vs人类'], spaces:['柏林','图书馆'], motifs:['黑白','彩色','飞行'], chars:['天使Damiel'], theoryFit:{本雅明:5,德勒兹:4} },
+
+  // 🇬🇧 英国电影
+  '如果': { en:'If....', themes:['反抗','规训','暴力'], conflicts:['反抗vs规训','自由vs制度'], spaces:['公学','宿舍','操场'], motifs:['枪','血','墙','制服'], chars:['Mick Travis'], theoryFit:{福柯:5,齐泽克:4,德勒兹:3} },
+
+  // 🇨🇳 中国台湾电影
+  '牯岭街少年杀人事件': { en:'A Brighter Summer Day', themes:['理想','纯真','暴力'], conflicts:['理想vs现实','纯真vs暴力'], spaces:['眷村','学校','街头'], motifs:['刀','唱片','灯','血'], chars:['小四','小明'], theoryFit:{拉康:5,齐泽克:4,福柯:3} },
+
+  // 🇮🇷 伊朗电影
+  '何处是我朋友的家': { en:'Where Is the Friend\'s House?', themes:['责任','同情','恐惧'], conflicts:['责任vs恐惧','规则vs同情'], spaces:['村庄','山路','教室'], motifs:['作业本','山路','门','树'], chars:['Ahmed'], theoryFit:{德里达:3,本雅明:3,福柯:3} },
+  '一次别离': { en:'A Separation', themes:['道德','阶级','真相'], conflicts:['家庭vs法律'], spaces:['法庭','家庭空间'], motifs:['谎言','证词'], chars:['家庭群像'], theoryFit:{福柯:5,拉康:4} },
+
+  // 🇷🇺 苏联电影
+  '镜子': { en:'The Mirror', themes:['记忆','时间','和解'], conflicts:['记忆vs遗忘','个人vs历史'], spaces:['乡村','公寓','战场'], motifs:['镜子','火','雨','书'], chars:['母亲','妻子','少年'], theoryFit:{本雅明:5,德里达:4,拉康:3} },
+  '潜行者': { en:'Stalker', themes:['欲望','信仰','空间'], conflicts:['人vs区域'], spaces:['Zone','工业废墟'], motifs:['水','铁轨'], chars:['Stalker','Writer'], theoryFit:{德勒兹:5,本雅明:4} },
+  '牺牲': { en:'The Sacrifice', themes:['信仰','牺牲','世界终结'], conflicts:['理性vs信仰'], spaces:['海边房屋'], motifs:['火','水','房子'], chars:['Alexander'], theoryFit:{本雅明:5,拉康:3} },
+  '利维坦': { en:'Leviathan', themes:['权力','国家','压迫'], conflicts:['个体vs官僚机器'], spaces:['海岸','政府建筑'], motifs:['骨架','酒','法庭'], chars:['Kolya'], theoryFit:{福柯:5,马克思:5} },
+
+  // 🇮🇳 印度电影
+  '大路之歌': { en:'Pather Panchali', themes:['生存','尊严','成长'], conflicts:['生存vs尊严','传统vs现代'], spaces:['村庄','丛林','火车'], motifs:['火车','糖','雨','树'], chars:['Apu','Durga'], theoryFit:{本雅明:4,巴特:3,福柯:3} },
+
+  // 🇨🇦 加拿大电影
+  '焦土之城': { en:'Incendies', themes:['家庭','战争','记忆'], conflicts:['真相vs历史'], spaces:['中东','法庭'], motifs:['信件','火'], chars:['双胞胎'], theoryFit:{本雅明:5,拉康:4} },
+
+  // 🇸🇪 北欧电影
+  '忧郁症': { en:'Melancholia', themes:['抑郁','毁灭','绝望'], conflicts:['抑郁vs理性','毁灭vs秩序'], spaces:['婚礼庄园','马场','星空'], motifs:['行星','马','蜘蛛','光'], chars:['Justine','Claire'], theoryFit:{拉康:4,齐泽克:3,本雅明:3} },
+  '第七封印': { en:'The Seventh Seal', themes:['死亡','信仰','虚无'], conflicts:['人vs死神'], spaces:['中世纪荒原'], motifs:['棋局','死神','海滩'], chars:['Knight','Death'], theoryFit:{本雅明:4,拉康:3} },
+  '狩猎': { en:'The Hunt', themes:['误解','群体','排斥'], conflicts:['个体vs社会审判'], spaces:['学校','小镇'], motifs:['门','沉默'], chars:['Lucas'], theoryFit:{福柯:5,马克思:3} },
+
+  // 🇧🇷 拉美电影
+  '中央车站': { en:'Central Station', themes:['信任','救赎','寻找'], conflicts:['信任vs欺骗','失去vs寻找'], spaces:['中央车站','公路','小镇'], motifs:['信','车','照片','路'], chars:['Dora','Josué'], theoryFit:{本雅明:4,福柯:3,巴特:2} },
+  '上帝之城': { en:'City of God', themes:['暴力','阶级','生存'], conflicts:['犯罪结构化'], spaces:['贫民窟'], motifs:['枪','摄影','街道'], chars:['Rocket','Zé'], theoryFit:{马克思:5,福柯:4} },
+  '罗马': { en:'Roma', themes:['记忆','阶级','家庭'], conflicts:['雇佣关系vs情感'], spaces:['家庭','城市'], motifs:['水','清洁','黑白影像'], chars:['Cleo'], theoryFit:{本雅明:4,拉康:3} },
+  '谜一样的双眼': { en:'The Secret in Their Eyes', themes:['记忆','正义','时间'], conflicts:['真相vs历史'], spaces:['法庭','城市'], motifs:['眼睛','档案'], chars:['检察官'], theoryFit:{福柯:4,本雅明:4} },
+  '你妈妈也一样': { en:'Y Tu Mamá También', themes:['欲望','青春','阶级'], conflicts:['成长vs现实'], spaces:['公路','海边'], motifs:['路','身体'], chars:['少年'], theoryFit:{拉康:4,德勒兹:4} },
+  '摩托日记': { en:'The Motorcycle Diaries', themes:['觉醒','阶级','流动'], conflicts:['个体vs社会'], spaces:['南美公路'], motifs:['摩托','路'], chars:['切·格瓦拉'], theoryFit:{马克思:5,本雅明:4} },
+
+  // 🇪🇸 西班牙电影
+  '潘神的迷宫': { en:'Pan\'s Labyrinth', themes:['想象','战争','权力'], conflicts:['现实vs幻想'], spaces:['森林','地下世界'], motifs:['门','怪物','迷宫'], chars:['Ofelia'], theoryFit:{德勒兹:4,拉康:4} }
+};
+
+// 主题→骰子池映射（film themes 可能不在骰子池里，需要映射到最近的骰子词）
+const CONCEPT_MAP = {
+  '现实':'真理','自由':'自由','控制':'权力','身份':'身份','消费':'欲望','异化':'主体',
+  '权力':'权力','秩序':'权力','时间':'时间','爱':'欲望','生存':'身体','阶级':'权力',
+  '欲望':'欲望','记忆':'时间','梦':'意义','孤独':'主体','成长':'身份','转化':'身份',
+  '恐惧':'身体','暴力':'身体','复仇':'权力','家庭':'欲望','制度':'权力','幻想':'表征',
+  '死亡':'意义','存在':'主体','犯罪':'权力','青年':'自由','国家':'权力','技术':'意义',
+  '灾难':'身体','人性':'主体','沟通':'意义','模糊':'意义','调查':'真理','现代性':'时间',
+  '规训':'权力','女性':'身份','压迫':'权力','流动':'时间','消失':'意义','叙事':'表征',
+  '命运':'时间','真实':'真理','虚拟':'表征','创造':'意义','牺牲':'主体','嫉妒':'欲望',
+  '服从':'权力','信仰':'意义','贫困':'权力','责任':'权力','同情':'意义','童年':'身份',
+  '沉默':'意义','坚持':'主体','超越':'主体','进化':'时间','意识':'主体','真实':'真理',
+  '嫉妒':'欲望','等待':'时间','救赎':'意义','寻找':'真理','信任':'意义','欺骗':'表征',
+  '希望':'意义','绝望':'意义','荒诞':'意义','反抗':'自由','探索':'真理',
+  // 新增概念映射（来自17部补充电影）
+  '偶然性':'时间','道德':'真理','双重性':'身份','非正式关系':'家庭','虚无':'意义',
+  '空虚':'意义','老化':'身体','日常':'时间','重复':'时间','社会结构':'权力',
+  '纪律':'权力','战争':'权力','想象':'表征','雇佣关系':'权力',
+  // 新增概念映射（来自50部补充电影 51-100）
+  '疯狂':'主体','创伤':'身体','天赋':'自由','催眠':'表征','信仰':'意义',
+  '压抑':'欲望','劳动':'身体','剥夺':'权力','纯真':'身份','理想':'真理',
+  '变迁':'时间','重建':'权力','觉醒':'身份','欺骗':'表征','观察':'真理',
+  '表演':'表征','社会冷漠':'权力','精神崩溃':'主体','封闭':'权力',
+  '种族':'身份','媒体':'表征','失控':'权力','不确定性':'意义',
+  '群体':'权力','排斥':'权力','误解':'真理','堕落':'主体',
+  '限制':'权力','完美':'身份','孤立':'主体','占有':'权力',
+  '意识剥夺':'主体','分裂':'身份','观众':'表征','正义':'权力',
+  // 新增概念映射（金瓶梅·结构增强节点）
+  '物质沉溺':'欲望','金钱交换':'权力','宴席':'欲望','礼物':'表征','窥视':'表征',
+  '商人宅邸':'权力','私密房间':'欲望','社会交易场域':'权力','秩序':'权力',
+  '社会伦理':'权力','财富积累':'权力','道德崩解':'意义','家庭结构':'欲望',
+  '流动性':'时间','荒原':'空间','边缘':'身份','遗弃':'家庭',
+  '保护':'权力','极限':'身体','惩罚':'权力','超自然':'表征',
+  '不确定性':'意义','社会审判':'权力','官僚机器':'权力',
+  '崩溃':'主体','碎片化':'表征','占满':'权力','本能':'欲望',
+  '成长':'身份','停滞':'时间','动物':'自然','强制':'权力',
+  '失踪':'意义','格瓦拉':'权力','革命':'权力','觉醒':'身份'
+};
+
+// === 张力自动迁移系统（themes/conflicts → tensions） ===
+// 把旧系统的扁平标签映射到新系统的多维张力标签
+const THEME_TO_TENSION = {
+  // themes → 多维张力标签
+  '欲望':'self vs desire', '消费':'self vs desire', '爱':'self vs desire', '嫉妒':'self vs desire',
+  '物质沉溺':'self vs desire', '本能':'self vs desire', '压抑':'self vs desire',
+  '权力':'self vs system', '控制':'self vs system', '制度':'self vs system',
+  '压迫':'self vs system', '规训':'self vs system', '阶级':'self vs system',
+  '异化':'self vs system', '社会冷漠':'self vs system', '剥夺':'self vs system',
+  '限制':'self vs system', '服从':'self vs system', '正义':'self vs system',
+  '秩序':'self vs system', '社会结构':'self vs system', '社会伦理':'self vs system',
+  '财富积累':'self vs system', '金钱交换':'self vs system', '占有':'self vs system',
+  '强制':'self vs system', '惩罚':'self vs system', '社会审判':'self vs system',
+  '雇佣关系':'self vs system', '战争':'self vs system', '犯罪':'self vs system',
+  '自由':'self vs system', '反抗':'self vs system', '探索':'self vs system',
+  '身份':'self vs identity', '女性':'self vs identity', '成长':'self vs identity',
+  '童年':'self vs identity', '纯真':'self vs identity', '觉醒':'self vs identity',
+  '分裂':'self vs identity', '双重性':'self vs identity', '种族':'self vs identity',
+  '家庭':'self vs family', '家庭结构':'self vs family', '非正式关系':'self vs family',
+  '遗弃':'self vs family', '保护':'self vs family',
+  '身体':'self vs nature', '恐惧':'self vs nature', '灾难':'self vs nature',
+  '劳动':'self vs nature', '生存':'self vs nature', '极限':'self vs nature',
+  '老化':'self vs nature', '创伤':'self vs nature', '暴力':'self vs nature',
+  // themes → Desire Economy
+  '消费':'circulation', '物质沉溺':'excess', '本能':'excess', '压抑':'repression',
+  '宴席':'excess', '金钱交换':'circulation', '礼物':'substitution',
+  // themes → Power Modality
+  '规训':'disciplinary', '制度':'disciplinary', '纪律':'disciplinary', '封闭':'disciplinary',
+  '压迫':'disciplinary', '限制':'disciplinary', '服从':'disciplinary',
+  '控制':'invisible', '虚拟':'invisible', '幻想':'invisible', '窥视':'invisible',
+  '媒体':'invisible', '媒介':'invisible', '观众':'invisible', '表演':'invisible',
+  '社会冷漠':'invisible', '意识形态':'invisible',
+  '权力':'distributed', '阶级':'distributed', '金钱交换':'distributed',
+  '社会结构':'distributed', '社会交易场域':'distributed',
+  '家庭':'domestic', '家庭结构':'domestic', '性别':'domestic', '日常':'domestic',
+  // themes → Spatial Logic
+  '城市':'porous', '街头':'porous', '市场':'porous', '流动':'porous', '流动性':'porous',
+  '家庭内部空间':'enclosed', '房间':'enclosed', '私密房间':'enclosed',
+  '公寓':'enclosed', '厨房':'enclosed', '牢房':'enclosed', '封闭空间':'enclosed',
+  '废墟':'fragmented', '碎片化':'fragmented', '荒原':'fragmented',
+  '战场':'vertical', '国家':'vertical', '官僚机器':'vertical',
+  '边界':'liminal', '阈限':'liminal', '过渡':'liminal',
+  // themes → Narrative Form
+  '日常':'episodic', '重复':'cyclical', '时间':'cyclical', '流动':'cyclical',
+  '碎片化':'fragmented_n', '崩塌':'fragmented_n', '不确定性':'fragmented_n',
+  '梦':'recursive', '潜意识':'recursive', '幻觉':'recursive',
+};
+
+const CONFLICT_TO_TENSION = {
+  '个体vs社会':'self vs system', '人vs系统':'self vs system', '个体vs集体':'self vs system',
+  '个体vs城市结构':'self vs system', '个体vs权力结构':'self vs system',
+  '个人vs历史':'self vs system', '生存vs尊严':'self vs system',
+  '自由vs规训':'self vs system', '制度vs个体':'self vs system',
+  '正常性定义vs边缘主体':'self vs system', '可见秩序vs隐形暴力':'self vs system',
+  '欲望vs秩序':'self vs desire', '欲望vs控制':'self vs desire',
+  '自我vs分裂':'self vs identity', '身份vs系统':'self vs identity',
+  '现实vs虚拟':'self vs identity', '真实vs复制':'self vs identity',
+  '真实vs幻想':'self vs identity', '自我vs他者':'self vs others',
+  '家庭vs权力结构':'self vs family', '爱的不可达':'self vs family',
+  '情感错位':'self vs others', '相遇vs错过':'self vs others',
+  '人vsAI':'self vs others', '人vs复制人':'self vs others',
+  '人类vs宇宙':'self vs nature', '人类vs机器':'self vs nature',
+  '生存vs自然':'self vs nature', '个体vs欲望':'self vs desire',
+  '个体心理崩溃vs社会结构压迫':'self vs system',
+  '阶级差异':'self vs system', '消费社会':'self vs desire',
+  '意识控制':'self vs system', '现实不确定':'self vs identity',
+  '权力隐形化':'invisible', '社会失败':'self vs system',
+  '重复vs崩溃':'cyclical',
+  '快乐vs虚无':'self vs desire',
+  '现实vs观看':'invisible',
+  '个体欲望vs社会伦理':'self vs desire',
+  '财富积累vs道德崩解':'self vs system',
+};
+
+const SPACE_TO_TENSION = {
+  '家庭内部空间':'enclosed', '商人宅邸':'enclosed', '私密房间':'enclosed',
+  '公寓':'enclosed', '厨房':'enclosed', '牢房':'enclosed', '监狱':'enclosed',
+  '房屋':'enclosed', '地下室':'enclosed', '隧道':'enclosed',
+  '罗马街头':'porous', '城市':'porous', '市场':'porous', '柏林街头':'porous',
+  '重庆大厦':'porous', '南美公路':'porous',
+  '战场':'vertical', '军营':'vertical', '国家':'vertical',
+  '废墟':'fragmented', '工业空间':'fragmented', '数字空间':'fragmented',
+  '梦层':'liminal', '潜意识':'liminal', '星际门':'liminal',
+  '海边':'liminal', '森林':'liminal', '地下世界':'liminal',
+  '医院':'enclosed', '学校':'enclosed', '教堂':'enclosed',
+  '楼道':'liminal', '图书馆':'enclosed',
+  '太空舱':'enclosed', '五维空间':'liminal',
+  '电视演播室':'invisible', '地铁系统':'porous',
+  '牛奶吧':'porous', '治疗室':'enclosed',
+  '蛋白质农场':'vertical', 'DNA档案室':'vertical',
+  '罗马夜生活':'porous', '派对':'porous',
+  '楼梯':'vertical', '阶梯城市':'vertical',
+  '破败公寓':'enclosed', '办公空间':'enclosed',
+  '地下俱乐部':'enclosed', '现实城市':'porous',
+  '机器世界':'vertical', '接入空间':'liminal',
+  '家族庄园':'enclosed', '纽约城市':'porous',
+  '船舱':'enclosed', '海洋':'liminal',
+  '雨夜城市':'porous', '工业废墟':'fragmented',
+  '城市折叠':'liminal', '屏幕空间':'invisible',
+  '白色房间':'enclosed', '河边':'liminal',
+  '村庄':'enclosed', '河边战场':'vertical',
+  '高速公路':'porous', '快餐店':'porous',
+  '边境':'liminal', '公海':'liminal',
+};
+
+// 主题→欲望机制维度补充映射
+const DESIRE_ECONOMY_MAP = {
+  '欲望':'repression', '消费':'circulation', '物质沉溺':'excess',
+  '爱':'repression', '嫉妒':'excess', '本能':'excess',
+  '压抑':'repression', '克制':'repression', '幻想':'substitution',
+  '虚拟':'substitution', '窥视':'substitution', '表演':'substitution',
+  '宴席':'excess', '金钱交换':'circulation', '礼物':'substitution',
+};
+
+// 主题→权力机制维度补充映射
+const POWER_MODALITY_MAP = {
+  '权力':'distributed', '控制':'invisible', '规训':'disciplinary',
+  '制度':'disciplinary', '压迫':'disciplinary', '监视':'disciplinary',
+  '阶级':'distributed', '消费':'distributed', '技术':'invisible',
+  '媒体':'invisible', '媒介':'invisible', '家庭':'domestic',
+  '性别':'domestic', '战争':'sovereign', '犯罪':'sovereign',
+};
+
+// 迁移函数：从旧FILM_DB条目自动生成tensions
+function migrateToTensions(film) {
+  if (film.tensions) {
+    // 手动覆盖优先，但需要加入 cultural 维度（如果有的话）
+    const t = typeof film.tensions === 'object' && !Array.isArray(film.tensions) ? {...film.tensions} : film.tensions;
+    if (film.culturalSymptom && !t.cultural) t.cultural = [];
+    if (film.culturalSymptom && t.cultural && t.cultural.length === 0) {
+      t.cultural = mapCulturalSymptomToTensions(film.culturalSymptom);
+    }
+    return t;
+  }
+
+  const t = { subject:[], power:[], spatial:[], desire:[], narrative:[], cultural:[] };
+
+  // themes → 主体张力 + 欲望机制 + 权力机制
+  film.themes.forEach(theme => {
+    const sT = THEME_TO_TENSION[theme];
+    if (sT && TENSION_DIM[sT] === 'subject' && !t.subject.includes(sT)) t.subject.push(sT);
+    const dE = DESIRE_ECONOMY_MAP[theme];
+    if (dE && !t.desire.includes(dE)) t.desire.push(dE);
+    const pM = POWER_MODALITY_MAP[theme];
+    if (pM && !t.power.includes(pM)) t.power.push(pM);
+  });
+
+  // conflicts → 主体张力 + 权力机制
+  film.conflicts.forEach(conf => {
+    const cT = CONFLICT_TO_TENSION[conf];
+    if (cT) {
+      if (TENSION_DIM[cT] === 'subject' && !t.subject.includes(cT)) t.subject.push(cT);
+      if (TENSION_DIM[cT] === 'power' && !t.power.includes(cT)) t.power.push(cT);
+    }
+    // 也尝试从"X vs Y"格式推断
+    const parts = conf.split('vs').map(s => s.trim());
+    if (parts.length >= 2 && !cT) {
+      // 如果一方是"欲望/爱/消费"另一方是"秩序/控制/制度"
+      const desireSide = parts.some(p => ['欲望','爱','消费','个体','自由','本能'].includes(p));
+      const systemSide = parts.some(p => ['秩序','控制','制度','社会','集体','规训','伦理'].includes(p));
+      if (desireSide && systemSide && !t.subject.includes('self vs desire')) t.subject.push('self vs desire');
+      if (systemSide && !desireSide && !t.subject.includes('self vs system')) t.subject.push('self vs system');
+    }
+  });
+
+  // spaces → 空间结构
+  film.spaces.forEach(space => {
+    const sL = SPACE_TO_TENSION[space];
+    if (sL && !t.spatial.includes(sL)) t.spatial.push(sL);
+  });
+
+  // motifs → 补充各维度
+  film.motifs.forEach(motif => {
+    const mT = THEME_TO_TENSION[motif];
+    if (mT) {
+      const dim = TENSION_DIM[mT];
+      if (dim && !t[dim].includes(mT)) t[dim].push(mT);
+    }
+  });
+
+  // 默认值
+  if (t.subject.length === 0) t.subject.push('self vs system');
+  if (t.power.length === 0) t.power.push('distributed');
+  if (t.spatial.length === 0) t.spatial.push('enclosed');
+  if (t.desire.length === 0) t.desire.push('repression');
+  if (t.narrative.length === 0) t.narrative.push('linear');
+
+  // cultural 维度：从 culturalSymptom 映射（如有）
+  if (film.culturalSymptom) {
+    t.cultural = mapCulturalSymptomToTensions(film.culturalSymptom);
+  }
+  if (t.cultural.length === 0) t.cultural.push('industrial_formula'); // 默认
+
+  return t;
+}
+
+// === 加权随机选择 ===
+function weightedRand(words, weights) {
+  const items = words.map(w => ({ word: w, score: weights[w] || 1 }));
+  const total = items.reduce((s, i) => s + i.score, 0);
+  let r = Math.random() * total;
+  for (const item of items) {
+    r -= item.score;
+    if (r <= 0) return item.word;
+  }
+  return items[items.length - 1].word;
+}
+
+// === 电影数据检索 ===
+function getFilmData(input) {
+  const normalized = input.replace(/[《》\s]/g, '');
+  // 直接匹配中文名
+  if (FILM_DB[normalized]) return FILM_DB[normalized];
+  if (FILM_DB[input]) return FILM_DB[input];
+  // 匹配英文名
+  for (const [cn, data] of Object.entries(FILM_DB)) {
+    if (data.en && normalized.toLowerCase() === data.en.toLowerCase().replace(/[\s:'\.]/g, '')) return data;
+  }
+  // 模糊匹配
+  for (const key of Object.keys(FILM_DB)) {
+    const nk = key.replace(/[《》\s]/g, '');
+    if (normalized.includes(nk) || nk.includes(normalized)) return FILM_DB[key];
+  }
+  for (const [cn, data] of Object.entries(FILM_DB)) {
+    if (data.en && normalized.toLowerCase().includes(data.en.toLowerCase().replace(/[\s:'\.]/g, ''))) return data;
+  }
+  return null;
+}
+
+// 从电影数据构建桥接句
+function getFilmBridge(film) {
+  if (!film) return null;
+  const c = film.conflicts[0];
+  if (!c) return null;
+  // "人vs系统" → "人与系统之间的对抗"
+  const parts = c.split('vs');
+  if (parts.length === 2) return `${parts[0]}与${parts[1]}之间的张力`;
+  return c;
+}
+
+// === 文化症候→张力标签映射 ===
+function mapCulturalSymptomToTensions(cs) {
+  if (!cs) return [];
+  const tags = [];
+
+  // industrial_position → industrial_formula / ip_cycle
+  const ip = cs.industrial_position || '';
+  if (ip.includes('IP') || ip.includes('续作') || ip.includes('系列') || ip.includes('宇宙')) tags.push('ip_cycle');
+  if (ip.includes('类型') || ip.includes('公式') || ip.includes('流水线') || ip.includes('商业')) tags.push('industrial_formula');
+  if (ip.includes('超级') || ip.includes('大片') || ip.includes('工业')) tags.push('industrial_formula');
+  if (ip.includes('流媒体') || ip.includes('平台') || ip.includes('算法')) tags.push('platform_algorithm');
+  if (ip.includes('独立') || ip.includes('小成本') || ip.includes('文艺')) tags.push('cultural_demand');
+
+  // audience_contract → audience_contract / cultural_demand
+  const ac = cs.audience_contract || '';
+  if (ac.includes('刺激') || ac.includes('感官') || ac.includes('娱乐')) tags.push('audience_contract');
+  if (ac.includes('情感') || ac.includes('共鸣') || ac.includes('治愈')) tags.push('audience_contract');
+  if (ac.includes('粉丝') || ac.includes('忠诚') || ac.includes('社群')) tags.push('ip_cycle');
+  if (ac.includes('焦虑') || ac.includes('需求') || ac.includes('缓解')) tags.push('cultural_demand');
+
+  // platform_logic → platform_algorithm
+  const pl = cs.platform_logic || '';
+  if (pl.includes('算法') || pl.includes('推荐') || pl.includes('数据')) tags.push('platform_algorithm');
+  if (pl.includes('社交') || pl.includes('话题') || pl.includes('营销')) tags.push('audience_contract');
+
+  // ideological_function → cultural_demand
+  const if2 = cs.ideological_function || '';
+  if (if2.includes('确认') || if2.includes('主流') || if2.includes('价值观')) tags.push('cultural_demand');
+  if (if2.includes('焦虑') || if2.includes('缓解') || if2.includes('转移')) tags.push('cultural_demand');
+  if (if2.includes('消费') || if2.includes('欲望') || if2.includes('制造')) tags.push('industrial_formula');
+
+  // market_cycle → ip_cycle / industrial_formula
+  const mc = cs.market_cycle || '';
+  if (mc.includes('IP') || mc.includes('膨胀') || mc.includes('续作')) tags.push('ip_cycle');
+  if (mc.includes('疲劳') || mc.includes('衰退') || mc.includes('崩盘')) tags.push('industrial_formula');
+  if (mc.includes('算法') || mc.includes('推荐') || mc.includes('平台')) tags.push('platform_algorithm');
+
+  // 去重
+  return [...new Set(tags)];
+}
+
+// 张力标签→骰子池权重合并函数（v7.0 支持双轨）
+function mergeTensionWeights(tensions, diceKey, register) {
+  const reg = register || (currentDiceRegisters ? currentDiceRegisters[diceKey] : 'inside');
+  const words = getDiceWords(diceKey, reg);
+  const weights = {};
+  words.forEach(w => { weights[w] = 1; });
+  // 遍历所有张力维度的所有标签
+  Object.values(tensions).forEach(tags => {
+    tags.forEach(tag => {
+      const map = TENSION_DICE_MAP[tag];
+      if (map && map[diceKey]) {
+        Object.entries(map[diceKey]).forEach(([word, boost]) => {
+          if (weights[word]) weights[word] += boost;
+        });
+      }
+    });
+  });
+  return weights;
+}
+
+// === 骰子掷骰（张力向量驱动 v7.0 · Inside/Around 双轨） ===
+// 电影 = 多个张力向量的组合 → 每个向量同时权重多个骰子池 → 跨链一致性
+// 新增：根据电影特性决定每颗骰子走 Inside 或 Around register
+// Around register 使用外部词面（CGI饱和/IP宇宙/类型公式耗尽等）
+function rollDice(filmOverride) {
+  currentDice = {};
+  currentDiceRegisters = {}; // 记录每颗骰子的 register
+
+  // 每次掷骰前重置导演数据（但不会丢失已识别的导演）
+  const badgeEl = document.getElementById('directorBadge');
+  if (badgeEl) badgeEl.className = 'director-badge hidden';
+
+  // 接受外部传入的电影数据（用于AI提取后的加权掷骰）
+  const film = filmOverride || getFilmData(currentObject);
+
+  // 决定每颗骰子的 register（Inside/Around）
+  const registers = decideDiceRegisters(film);
+  currentDiceRegisters = registers;
+
+  // 获取电影的张力向量（手动覆盖 or 自动迁移）
+  const tensions = film ? migrateToTensions(film) : null;
+
+  // ── 1. 理论框架：始终 inside，theoryFit + 张力framework权重 + 导演理论亲和力 ──
+  const fwWords = DICE.framework.words;
+  // 基础权重：导演 theory_affinity 优先
+  const baseFwWeights = {};
+  if (currentDirector && currentDirector.theory_affinity) {
+    fwWords.forEach(w => { baseFwWeights[w] = (currentDirector.theory_affinity[w] || 0) + 1; });
+  } else {
+    fwWords.forEach(w => { baseFwWeights[w] = 1; });
+  }
+
+  if (film && film.theoryFit) {
+    // 叠加电影 theoryFit（权重较高）
+    fwWords.forEach(w => { baseFwWeights[w] += (film.theoryFit[w] || 0); });
+    if (tensions) {
+      Object.values(tensions).forEach(tags => {
+        tags.forEach(tag => {
+          const map = TENSION_DICE_MAP[tag];
+          if (map && map.framework) {
+            Object.entries(map.framework).forEach(([w, b]) => {
+              if (baseFwWeights[w]) baseFwWeights[w] += b;
+            });
+          }
+        });
+      });
+    }
+    currentDice.framework = weightedRand(fwWords, baseFwWeights);
+  } else if (tensions) {
+    const fwWeights = mergeTensionWeights(tensions, 'framework');
+    // 叠加导演理论亲和力
+    if (currentDirector && currentDirector.theory_affinity) {
+      Object.entries(currentDirector.theory_affinity).forEach(([t, v]) => {
+        if (fwWeights[t]) fwWeights[t] += v;
+      });
+    }
+    currentDice.framework = weightedRand(fwWords, fwWeights);
+  } else {
+    currentDice.framework = weightedRand(fwWords, baseFwWeights);
+  }
+
+  // ── 2. 核心问题：根据 register 选词面 ──
+  const probWords = getDiceWords('problem', registers.problem);
+  const fwAff = AFFINITY[currentDice.framework] || {};
+  if (tensions) {
+    const tensionWeights = mergeTensionWeights(tensions, 'problem');
+    const combined = {};
+    probWords.forEach(w => { combined[w] = tensionWeights[w] + (fwAff[w] || 0); });
+    currentDice.problem = weightedRand(probWords, combined);
+  } else {
+    currentDice.problem = weightedRand(probWords, fwAff);
+  }
+
+  // ── 3. 分析对象：根据 register 选词面 ──
+  const objWords = getDiceWords('object', registers.object);
+  if (tensions) {
+    const objWeights = mergeTensionWeights(tensions, 'object');
+    currentDice.object = weightedRand(objWords, objWeights);
+  } else {
+    currentDice.object = rand(objWords);
+  }
+
+  // ── 4. 导演签名：根据 register 选词面 + 导演数据库覆盖 ──
+  let dirWords = getDiceWords('director', registers.director);
+  // 如果识别到具体导演，Inside模式用其 visual_signature 覆盖词面
+  const isDirectorKnown = currentDirector && currentDirector.visual_signature;
+  const dirWordPool = (isDirectorKnown && registers.director === 'inside')
+    ? currentDirector.visual_signature
+    : dirWords;
+  if (isDirectorKnown && registers.director === 'inside') {
+    // 记录覆盖以便UI显示
+    if (!currentDiceRegisters) currentDiceRegisters = {};
+    currentDiceRegisters._directorMode = 'known';
+  }
+
+  if (registers.director === 'around') {
+    // Around 模式：外部问题→外部导演签名亲和度（仍使用通用词面）
+    const dirAff = AROUND_PROBLEM_DIRECTOR_AFF[currentDice.problem] || {};
+    if (tensions) {
+      const dirWeights = mergeTensionWeights(tensions, 'director');
+      const combined = {};
+      dirWords.forEach(w => { combined[w] = dirWeights[w] + (dirAff[w] || 0); });
+      currentDice.director = weightedRand(dirWords, combined);
+    } else {
+      currentDice.director = weightedRand(dirWords, dirAff);
+    }
+  } else {
+    // Inside 模式：理论框架→导演签名亲和度 + 张力映射
+    // 如识到具体导演，词面已被 visual_signature 覆盖
+    const dirAff = FRAMEWORK_DIRECTOR_AFF[currentDice.framework] || {};
+    if (tensions) {
+      const dirWeights = mergeTensionWeights(tensions, 'director');
+      const combined = {};
+      dirWordPool.forEach(w => { combined[w] = dirWeights[w] + (dirAff[w] || 0); });
+      currentDice.director = weightedRand(dirWordPool, combined);
+    } else {
+      currentDice.director = weightedRand(dirWordPool, dirAff);
+    }
+  }
+
+  // ── 5. 运作机制：根据 register 选词面 ──
+  const mechWords = getDiceWords('mechanism', registers.mechanism);
+  if (tensions) {
+    const mechWeights = mergeTensionWeights(tensions, 'mechanism');
+    // Around 机制的亲和度用 AROUND_MECH_AFF 代替 PROBLEM_MECH
+    const affSource = registers.mechanism === 'around' ? (AROUND_MECH_AFF[currentDice.problem] || {}) : (PROBLEM_MECH[currentDice.problem] || {});
+    const combined = {};
+    mechWords.forEach(w => { combined[w] = mechWeights[w] + (affSource[w] || 0); });
+    currentDice.mechanism = weightedRand(mechWords, combined);
+  } else {
+    const affSource = registers.mechanism === 'around' ? (AROUND_MECH_AFF[currentDice.problem] || {}) : (PROBLEM_MECH[currentDice.problem] || {});
+    currentDice.mechanism = weightedRand(mechWords, affSource);
+  }
+
+  // ── 6. 宏观语境：根据 register 选词面（含电影运动Inside/工业运动Around）──
+  const ctxWords = getDiceWords('context', registers.context);
+  if (tensions) {
+    const ctxWeights = mergeTensionWeights(tensions, 'context');
+    currentDice.context = weightedRand(ctxWords, ctxWeights);
+  } else {
+    currentDice.context = rand(ctxWords);
+  }
+
+  // ── 7. 崩塌方向：根据 register 选词面 ──
+  const colWords = getDiceWords('collapse', registers.collapse);
+  // Around 崩塌用 AROUND_MECH_COLLAPSE 代替 MECH_COLLAPSE
+  const collapseAff = registers.collapse === 'around' ? (AROUND_MECH_COLLAPSE[currentDice.mechanism] || {}) : (MECH_COLLAPSE[currentDice.mechanism] || {});
+  currentDice.collapse = weightedRand(colWords, collapseAff);
+
+  return currentDice;
+}
+
+// === 三套风格模板 ===
+// 核心约束不变：① 每句含电影锚点 ② 理论后置解释 ③ 必有观看者位置
+// academic: 术语前置，正式论文体
+// === 评论名家蒸馏系统 ===
+// 不是模仿语气，而是提取思维骨架：论证弧线、修辞装置、理论嵌入方式
+// 4位评论家 → 4种结构参数 → 5段式模板驱动
+
+const STYLE_PROFILES = {
+  djh: {
+    name: '戴锦华',
+    tag: '理论纵深·结构思辨',
+    arc: ['history', 'collective', 'diagnosis', 'judgment'],
+    rhetoric: { sentenceLen: 'long', openPattern: 'historical', transition: 'inversion', pronoun: 'collective' },
+    theoryInsert: 'explicit',
+    closePattern: 'political',
+    // Around 模式参数：外部阅读时的风格变体
+    aroundArc: ['context', 'symptom', 'structuralDiagnosis', 'culturalJudgment'],
+    aroundRhetoric: { sentenceLen: 'long', openPattern: 'culturalContext', transition: 'inversion', pronoun: 'collective' },
+    aroundTheoryInsert: 'cultural',
+    aroundClosePattern: 'structuralVerdict'
+  },
+  ebert: {
+    name: 'Roger Ebert',
+    tag: '大众体验·情感共鸣',
+    arc: ['personal', 'emotional', 'detail', 'human'],
+    rhetoric: { sentenceLen: 'short', openPattern: 'personal', transition: 'accumulation', pronoun: 'first' },
+    theoryInsert: 'implicit',
+    closePattern: 'emotional',
+    aroundArc: ['observation', 'culturalContext', 'patternRecognition', 'audienceInsight'],
+    aroundRhetoric: { sentenceLen: 'short', openPattern: 'observation', transition: 'accumulation', pronoun: 'first' },
+    aroundTheoryInsert: 'implicit',
+    aroundClosePattern: 'audienceInsight'
+  },
+  kael: {
+    name: 'Pauline Kael',
+    tag: '毒舌快评·反共识',
+    arc: ['provocation', 'deconstruction', 'verdict'],
+    rhetoric: { sentenceLen: 'mixed', openPattern: 'provocative', transition: 'contrast', pronoun: 'first' },
+    theoryInsert: 'target',
+    closePattern: 'verdict',
+    aroundArc: ['industryProvocation', 'formulaDeconstruction', 'industrialVerdict'],
+    aroundRhetoric: { sentenceLen: 'mixed', openPattern: 'provocative', transition: 'contrast', pronoun: 'first' },
+    aroundTheoryInsert: 'industrialTarget',
+    aroundClosePattern: 'industrialVerdict'
+  },
+  zizek: {
+    name: 'Žižek',
+    tag: '悖论翻转·意识形态诊断',
+    arc: ['reversal', 'diagnosis', 'paradox', 'openEnded'],
+    rhetoric: { sentenceLen: 'mixed', openPattern: 'reversal', transition: 'paradox', pronoun: 'impersonal' },
+    theoryInsert: 'engine',
+    closePattern: 'openEnded',
+    aroundArc: ['culturalReversal', 'industrialDiagnosis', 'symptomParadox', 'structuralOpenEnded'],
+    aroundRhetoric: { sentenceLen: 'mixed', openPattern: 'culturalReversal', transition: 'paradox', pronoun: 'impersonal' },
+    aroundTheoryInsert: 'culturalEngine',
+    aroundClosePattern: 'structuralOpenEnded'
+  },
+  zhouliming: {
+    name: '周黎明',
+    tag: '跨文化视角·中西对照',
+    arc: ['crossCultural', 'comparison', 'insight', 'bridge'],
+    rhetoric: { sentenceLen: 'mixed', openPattern: 'cultural', transition: 'contrast', pronoun: 'first' },
+    theoryInsert: 'implicit',
+    closePattern: 'bridge',
+    aroundArc: ['marketComparison', 'crossCulturalIndustry', 'structuralInsight', 'globalBridge'],
+    aroundRhetoric: { sentenceLen: 'mixed', openPattern: 'marketContext', transition: 'contrast', pronoun: 'first' },
+    aroundTheoryInsert: 'implicit',
+    aroundClosePattern: 'globalBridge'
+  }
+};
+
+// === 蒸馏驱动的5段式模板 ===
+// 每段根据StyleProfile参数动态调整句式/弧线/理论嵌入方式
+
+const DISTILLED_TEMPLATES = {
+
+  // ──── 戴锦华：历史语境→集体处境→理论诊断→政治判断 ────
+  djh: {
+    // 段1：历史语境开篇（倒装长句，集体代词，理论显式命名）
+    opening: [
+      (d, obj, film) => {
+        const anchor = getFilmAnchor(film);
+        if (anchor) return `在<em>${obj}</em>的历史语境中，${anchor}绝非作为<span class="theory-word">${d.object}</span>的单纯表征而呈现——它构成了<span class="theory-word">${d.problem}</span>的持续生成场域，而我们必须在结构层面加以辨识。`;
+        return `从历史与结构的双重维度审视<em>${obj}</em>，<span class="theory-word">${d.object}</span>的反复在场揭示了一种超越个体经验的<span class="theory-word">${d.problem}</span>——它不属于某个角色的困境，而是我们共同身处的历史处境。`;
+      },
+      (d, obj, film) => {
+        const anchor = getFilmAnchor(film);
+        if (anchor) return `当我们凝视<em>${obj}</em>中${anchor}的呈现方式时，看到的不仅是叙事层面的<span class="theory-word">${d.object}</span>，而是一种结构性的<span class="theory-word">${d.problem}</span>生成逻辑——它要求我们超越情节，进入文本的深层运作。`;
+        return `<em>${obj}</em>的结构组织方式使<span class="theory-word">${d.object}</span>脱离了叙事辅助角色，成为一种我们必须面对的<span class="theory-word">${d.problem}</span>——这不是银幕上的虚构，而是我们时代的真实结构。`;
+      }
+    ],
+    // 段2-3：集体诊断（理论显式出场，倒装转折）
+    diagnosis: [
+      (d, obj, film) => {
+        const detail = getFilmDetail(film);
+        if (detail) return `影片对${detail}的反复处理并非审美选择——在<span class="theory-word">${d.context}</span>的结构条件下，<span class="theory-word">${d.mechanism}</span>将<span class="theory-word">${d.object}</span>转化为<span class="theory-word">${d.problem}</span>的持续性生产机制：既是表征容器，亦是生成引擎。我们见证的不是一次性的叙事事件，而是结构的自我复制。`;
+        return `在<span class="theory-word">${d.context}</span>的结构性条件下，<span class="theory-word">${d.mechanism}</span>将<span class="theory-word">${d.object}</span>置于双重运作之中：同时生产并遮蔽<span class="theory-word">${d.problem}</span>——表征容器与生成引擎的二重性由此确立。这不是偶然，而是结构按其逻辑运转的必然。`;
+      },
+      (d, obj, film) => {
+        const detail = getFilmDetail(film);
+        if (detail) return `对${detail}的细读揭示了一种<span class="theory-word">${d.mechanism}</span>的运作逻辑：<span class="theory-word">${d.object}</span>在<span class="theory-word">${d.context}</span>中同时生产并遮蔽<span class="theory-word">${d.problem}</span>——这一双重运作构成了我们时代文本的结构性关键。`;
+        return `<span class="theory-word">${d.mechanism}</span>使<span class="theory-word">${d.object}</span>处于双重运作状态——同时生产并遮蔽<span class="theory-word">${d.problem}</span>。此双重性并非文本的缺陷，恰恰是<span class="theory-word">${d.context}</span>下结构运作的深层关键。`;
+      }
+    ],
+    // 段4-5：政治判断收尾（理论框架命名，崩塌非偶然）
+    judgment: [
+      (d) => `最终，<span class="collapse-word">${d.collapse}</span>并非文本的失败——从<span class="theory-word">${d.framework}</span>的理论视角观之，它恰恰是<span class="theory-word">${d.mechanism}</span>按其内在逻辑运转的必然结果。我们所见证的崩塌，不是某个故事的结局，而是我们时代结构的自我揭示。`,
+      (d) => `我们所见证的<span class="collapse-word">${d.collapse}</span>，可在<span class="theory-word">${d.framework}</span>的框架中获得结构性解释：<span class="theory-word">${d.problem}</span>从来不是表层现象——<span class="theory-word">${d.mechanism}</span>方是其深层逻辑，而这逻辑的终点，恰恰是我们共同身处的现实。`,
+      (d) => `归根结底，<span class="collapse-word">${d.collapse}</span>并非偶然。在<span class="theory-word">${d.framework}</span>的理论框架下，<span class="theory-word">${d.context}</span>中<span class="theory-word">${d.mechanism}</span>的运作必然导向此终点——而我们必须追问的不是"为什么崩塌"，而是"为什么我们一直假装它不会"。`
+    ]
+  },
+
+  // ──── 伊伯特：个人体验→情感共鸣→细节观察→人性洞察 ────
+  ebert: {
+    // 段1：个人体验开篇（短句叠加，"我"，理论隐含不命名）
+    opening: [
+      (d, obj, film) => {
+        const anchor = getFilmAnchor(film);
+        if (anchor) return `我第一次看<em>${obj}</em>的时候，${anchor}让我停下了。不是因为它好看，而是因为它像一面镜子——你看到的不是故事，是<span class="theory-word">${d.object}</span>的影子。它一直在那儿。`;
+        return `看<em>${obj}</em>最打动我的地方，不是剧情本身。而是<span class="theory-word">${d.object}</span>反复出现的方式——像暗流，像脉搏，像一种你没法忽略但又不完全理解的东西。`;
+      },
+      (d, obj, film) => {
+        const anchor = getFilmAnchor(film);
+        if (anchor) return `当${anchor}出现在<em>${obj}</em>中时，我第一反应是投入故事。但之后某个瞬间，<span class="theory-word">${d.object}</span>开始浮现。一种说不清的<span class="theory-word">${d.problem}</span>。它不是被讲出来的。它是被展示出来的。`;
+        return `你开始注意<em>${obj}</em>的细节。某个镜头，某句话，某个反复出现的东西——<span class="theory-word">${d.object}</span>。它不是在支撑故事，它好像在制造一种更深的<span class="theory-word">${d.problem}</span>。`;
+      }
+    ],
+    // 段2-3：情感共鸣叠加（感官描写，短句，理论作为背景暗示）
+    diagnosis: [
+      (d, obj, film) => {
+        const detail = getFilmDetail(film);
+        if (detail) return `${detail}不是随便安排的。它在影片里反复出现——像一根线，穿过每个场景。这不是一次性的。在<span class="theory-word">${d.context}</span>的条件下，<span class="theory-word">${d.mechanism}</span>让<span class="theory-word">${d.object}</span>既是<span class="theory-word">${d.problem}</span>的容器，也是它的发生器。症状变成了结构本身。`;
+        return `这不是一次性的现象。在<span class="theory-word">${d.context}</span>之下，<span class="theory-word">${d.mechanism}</span>把<span class="theory-word">${d.object}</span>变成了<span class="theory-word">${d.problem}</span>的持续来源——你以为只是故事里的一个细节，但它其实在驱动整部电影。`;
+      },
+      (d, obj, film) => {
+        const detail = getFilmDetail(film);
+        if (detail) return `影片反复处理${detail}。每一次出现，<span class="theory-word">${d.problem}</span>都在加深。不是因为剧情需要，而是因为<span class="theory-word">${d.mechanism}</span>在背后运转——<span class="theory-word">${d.object}</span>是容器也是引擎，这才是关键。`;
+        return `<span class="theory-word">${d.mechanism}</span>把<span class="theory-word">${d.object}</span>从<span class="theory-word">${d.problem}</span>的容器变成发生器。症状本身就是结构。你不一定需要理论来理解这一点——你只需要反复看。`;
+      }
+    ],
+    // 段4-5：人性洞察收尾（情感升华，理论从不显式出现）
+    judgment: [
+      (d) => `最终，<span class="collapse-word">${d.collapse}</span>不是这部电影的失败。它恰恰是<span class="theory-word">${d.mechanism}</span>按设计运转的结果——有些东西不是崩塌了，而是完成了它一直在做的事。`,
+      (d) => `我们看到的<span class="collapse-word">${d.collapse}</span>——<span class="theory-word">${d.problem}</span>从来不是表面问题。<span class="theory-word">${d.mechanism}</span>才是根。你不需要一个理论框架来命名它，你只需要承认：有些结构就是这样运转的。`,
+      (d) => `归根结底，<span class="collapse-word">${d.collapse}</span>不是意外。在<span class="theory-word">${d.context}</span>里，<span class="theory-word">${d.mechanism}</span>必然走向这个终点。而好的电影不会假装这不是真的。`
+    ]
+  },
+
+  // ──── 凯尔：挑衅断言→反证拆解→痛快收刀 ────
+  kael: {
+    // 段1：挑衅断言开篇（断言式，反问，理论当靶子）
+    opening: [
+      (d, obj, film) => {
+        const anchor = getFilmAnchor(film);
+        if (anchor) return `<em>${obj}</em>里的${anchor}不是什么精妙的隐喻——它是一台<span class="theory-word">${d.object}</span>制造机，量产<span class="theory-word">${d.problem}</span>。那些用<span class="theory-word">${d.framework}</span>来分析它的人说得对，但他们忘了说最重要的：这机器不是在讲故事，是在生产症状。`;
+        return `<em>${obj}</em>？你以为它讲的是故事。实际上<span class="theory-word">${d.object}</span>在每一个镜头里量产<span class="theory-word">${d.problem}</span>。这不是隐喻，这是生产线。`;
+      },
+      (d, obj, film) => {
+        const anchor = getFilmAnchor(film);
+        if (anchor) return `那些说${anchor}是"叙事手法"的评论家——他们看对了东西，看错了方式。<span class="theory-word">${d.object}</span>不是手法，是<span class="theory-word">${d.problem}</span>的掩护。`;
+        return `你以为你在看电影？<span class="theory-word">${d.object}</span>在看你。它藏在每个镜头里，量产<span class="theory-word">${d.problem}</span>。而那些忙着给它贴标签的人，正好是它需要的掩护。`;
+      }
+    ],
+    // 段2：反证拆解（对比转折，讽刺，理论当靶子被打）
+    diagnosis: [
+      (d, obj, film) => {
+        const detail = getFilmDetail(film);
+        if (detail) return `${detail}——不是意外，不是创意，不是导演的小心思。<span class="theory-word">${d.mechanism}</span>把<span class="theory-word">${d.object}</span>变成了<span class="theory-word">${d.problem}</span>的双面工厂：一面生产一面假装没这事。<span class="theory-word">${d.context}</span>只负责加柴火。那些用<span class="theory-word">${d.framework}</span>来解释的人，说得没错——但他们解释得太优雅了，忘了这东西本质上是一台症状制造机。`;
+        return `<span class="theory-word">${d.mechanism}</span> = 双面工厂。一面生产<span class="theory-word">${d.problem}</span>一面假装遮住。<span class="theory-word">${d.context}</span>加柴火，<span class="theory-word">${d.object}</span>当车间。<span class="theory-word">${d.framework}</span>能解释它——但解释得太漂亮了，反而遮住了最丑的部分。`;
+      },
+      (d, obj, film) => {
+        const detail = getFilmDetail(film);
+        if (detail) return `说白了：${detail}暴露了<span class="theory-word">${d.mechanism}</span>的真相——<span class="theory-word">${d.object}</span>是<span class="theory-word">${d.problem}</span>的容器也是引擎，症状本身就是结构。不是隐喻，是机制。`;
+        return `破案了：<span class="theory-word">${d.mechanism}</span>让<span class="theory-word">${d.object}</span>既是<span class="theory-word">${d.problem}</span>的病因也是药方。但药方有毒。`;
+      }
+    ],
+    // 段3：痛快收刀（断言收尾，反问，不解释）
+    verdict: [
+      (d) => `<span class="collapse-word">${d.collapse}</span>不是bug，是feature。从<span class="theory-word">${d.framework}</span>看，<span class="theory-word">${d.mechanism}</span>就是这么设计的。别假装惊讶。`,
+      (d) => `<span class="collapse-word">${d.collapse}</span>？<span class="theory-word">${d.framework}</span>早就说过了——<span class="theory-word">${d.problem}</span>不是表面问题，<span class="theory-word">${d.mechanism}</span>才是真boss。翻译完毕。`,
+      (d) => `结局不是意外。按<span class="theory-word">${d.framework}</span>的逻辑，<span class="theory-word">${d.context}</span>里的<span class="theory-word">${d.mechanism}</span>必然导向<span class="collapse-word">${d.collapse}</span>。懂的都懂。不懂的——再看一遍。`
+    ]
+  },
+
+  // ──── 泽克：常识翻转→意识形态诊断→悖论揭示→开放式收尾 ────
+  zizek: {
+    // 段1：常识翻转开篇（"你以为...恰恰..."，理论驱动反转）
+    opening: [
+      (d, obj, film) => {
+        const anchor = getFilmAnchor(film);
+        if (anchor) return `你以为<em>${obj}</em>中的${anchor}是在展示<span class="theory-word">${d.problem}</span>？恰恰相反——<span class="theory-word">${d.object}</span>在此不是<span class="theory-word">${d.problem}</span>的表征，而是<span class="theory-word">${d.problem}</span>的遮蔽装置。你看到的不是问题本身，而是问题假装自己不存在的机制。`;
+        return `关于<em>${obj}</em>，常识告诉我们<span class="theory-word">${d.object}</span>是<span class="theory-word">${d.problem}</span>的表现。恰恰相反——<span class="theory-word">${d.object}</span>不是表现，而是<span class="theory-word">${d.problem}</span>的意识形态遮蔽。你以为你在看问题？你正在看问题如何假装自己不在场。`;
+      },
+      (d, obj, film) => {
+        const anchor = getFilmAnchor(film);
+        if (anchor) return `那些说<em>${obj}</em>的${anchor}是<span class="theory-word">${d.problem}</span>的隐喻的人——他们犯了最经典的意识形态错误：把遮蔽当成揭示。<span class="theory-word">${d.object}</span>恰恰在它最可见的时刻，完成了对<span class="theory-word">${d.problem}</span>的最有效遮蔽。`;
+        return `你以为<em>${obj}</em>在揭示<span class="theory-word">${d.problem}</span>？恰恰相反——恰恰是在<span class="theory-word">${d.object}</span>最显眼的地方，<span class="theory-word">${d.problem}</span>完成了它最成功的自我遮蔽。这就是意识形态的运作方式：不是隐藏，而是让你以为你已经看到了。`;
+      }
+    ],
+    // 段2-3：悖论揭示（理论作为反转引擎，"not...but rather..."）
+    diagnosis: [
+      (d, obj, film) => {
+        const detail = getFilmDetail(film);
+        if (detail) return `这里的关键悖论是：<span class="theory-word">${d.mechanism}</span>不是<span class="theory-word">${d.problem}</span>的解决方案，而是<span class="theory-word">${d.problem}</span>的再生产机制。在<span class="theory-word">${d.context}</span>下，${detail}不是对<span class="theory-word">${d.problem}</span>的回应——恰恰是对<span class="theory-word">${d.problem}</span>的再确认。<span class="theory-word">${d.object}</span>同时是症状和治疗，而治疗本身——恰恰是症状最激进的形式。`;
+        return `关键悖论：<span class="theory-word">${d.mechanism}</span>不是对<span class="theory-word">${d.problem}</span>的回应，恰恰是对<span class="theory-word">${d.problem}</span>的再确认。在<span class="theory-word">${d.context}</span>下，<span class="theory-word">${d.object}</span>不是<span class="theory-word">${d.problem}</span>的解决方案——恰恰相反，恰恰是<span class="theory-word">${d.problem}</span>以伪装形式继续运转的机制。`;
+      },
+      (d, obj, film) => {
+        const detail = getFilmDetail(film);
+        if (detail) return `所以——not ${detail} as a representation of <span class="theory-word">${d.problem}</span>, but rather as <span class="theory-word">${d.problem}</span>'s mode of self-concealment. <span class="theory-word">${d.mechanism}</span>让<span class="theory-word">${d.object}</span>同时生产并遮蔽<span class="theory-word">${d.problem}</span>——这不是矛盾，这恰恰是意识形态运作的定义本身。`;
+        return `所以——不是<span class="theory-word">${d.object}</span>表现<span class="theory-word">${d.problem}</span>，恰恰相反——恰恰是<span class="theory-word">${d.object}</span>作为<span class="theory-word">${d.problem}</span>的自我遮蔽方式。<span class="theory-word">${d.mechanism}</span>的双重运作不是矛盾——恰恰是意识形态的定义本身。and so on and so on...`;
+      }
+    ],
+    // 段4-5：开放式收尾（"and so on..."，不给出确定性结论）
+    openEnded: [
+      (d) => `<span class="collapse-word">${d.collapse}</span>不是意外——恰恰相反，从<span class="theory-word">${d.framework}</span>的角度看，<span class="theory-word">${d.mechanism}</span>必然导向此终点。但真正的悖论是：我们早已知道这个终点，却一直假装我们可以避免它。and so on and so on...`,
+      (d) => `所以——<span class="collapse-word">${d.collapse}</span>。我们用<span class="theory-word">${d.framework}</span>来理解它：<span class="theory-word">${d.problem}</span>不是表面问题，<span class="theory-word">${d.mechanism}</span>才是深层逻辑。但知道这一点——恰恰不会改变任何东西。这就是意识形态的真正力量。and so on...`,
+      (d) => `最终，<span class="collapse-word">${d.collapse}</span>不是bug而是feature——但这个feature不是<span class="theory-word">${d.framework}</span>发现的，恰恰是<span class="theory-word">${d.framework}</span>参与制造的。在<span class="theory-word">${d.context}</span>里，<span class="theory-word">${d.mechanism}</span>运转到终点——而我们对终点的认识，恰恰是终点继续运转的条件。and so on and so on...`
+    ]
+  },
+
+  // ──── 周黎明：跨文化视角→中西对照→结构洞察→文化桥梁 ────
+  zhouliming: {
+    // 段1：跨文化视角开篇（文化对照，理论隐含不命名）
+    opening: [
+      (d, obj, film) => {
+        const anchor = getFilmAnchor(film);
+        if (anchor) return `从西方视角看<em>${obj}</em>中的${anchor}，你会觉得它仅仅是<span class="theory-word">${d.object}</span>的又一呈现。但换一个文化参照系——你会发现<span class="theory-word">${d.problem}</span>的运作方式截然不同。`;
+        return `在中国观众眼中，<em>${obj}</em>可能只是另一部讨论<span class="theory-word">${d.object}</span>的外国电影。但若放在跨文化语境下审视，<span class="theory-word">${d.problem}</span>的面貌会截然不同——它不只是银幕上的故事，而是两种文化结构交汇处的必然产物。`;
+      },
+      (d, obj, film) => {
+        const anchor = getFilmAnchor(film);
+        if (anchor) return `我第一次注意到<em>${obj}</em>里${anchor}的重量，是在把它和一部中国电影放在一起看的时候。<span class="theory-word">${d.object}</span>在不同文化中的呈现方式揭示了一个跨文化的<span class="theory-word">${d.problem}</span>——它既不是纯西方的，也不是纯东方的。`;
+        return `如果把<em>${obj}</em>放在中国电影的参照系里，<span class="theory-word">${d.object}</span>的呈现方式会显得既熟悉又陌生。<span class="theory-word">${d.problem}</span>在这里不是某个文化的专利——它是人类结构在不同文明语境下的变体。`;
+      }
+    ],
+    // 段2-3：中西对照（对照分析，理论隐含在对比逻辑中）
+    comparison: [
+      (d, obj, film) => {
+        const detail = getFilmDetail(film);
+        if (detail) return `有趣的是，${detail}在不同文化传统中承载的意义截然不同。在<span class="theory-word">${d.context}</span>的条件下，<span class="theory-word">${d.mechanism}</span>将<span class="theory-word">${d.object}</span>转化为<span class="theory-word">${d.problem}</span>——但同样的<span class="theory-word">${d.mechanism}</span>在中国文化语境中可能呈现出完全不同的面貌。这恰恰说明结构是跨文化的，但运作方式是受语境塑造的。`;
+        return `比较视角下，<span class="theory-word">${d.mechanism}</span>在<span class="theory-word">${d.context}</span>中对<span class="theory-word">${d.object}</span>的运作方式有一种"西方式"的<span class="theory-word">${d.problem}</span>——但若对照中国电影中同类结构的处理，你会发现同一<span class="theory-word">${d.problem}</span>可以有截然不同的生成路径。`;
+      },
+      (d, obj, film) => {
+        const detail = getFilmDetail(film);
+        if (detail) return `当${detail}和同类中国元素并置时，一个更深的<span class="theory-word">${d.problem}</span>浮现了：<span class="theory-word">${d.mechanism}</span>不是普世的——它被<span class="theory-word">${d.context}</span>的文化土壤所塑造。这不是说结构不存在，而是说结构的表达方式永远是地方性的。`;
+        return `这里有一个关键对照：<span class="theory-word">${d.object}</span>在不同文化中的<span class="theory-word">${d.mechanism}</span>既有共性又有差异。共性指向<span class="theory-word">${d.problem}</span>作为人类结构的必然性；差异则提醒我们——<span class="theory-word">${d.context}</span>始终是地方性的，而所谓"普世"恰恰是最需要被审视的。`;
+      }
+    ],
+    // 段4-5：文化桥梁收尾（对照回归，连接不同文化经验）
+    bridge: [
+      (d) => `<span class="collapse-word">${d.collapse}</span>不是某一个文化的特有问题——从<span class="theory-word">${d.framework}</span>的视角看，它是<span class="theory-word">${d.mechanism}</span>在<span class="theory-word">${d.context}</span>中运转的必然终点。但不同文化抵达此终点的方式截然不同——正是这种差异，为跨文化理解提供了真正的桥梁。`,
+      (d) => `归根到底，<span class="collapse-word">${d.collapse}</span>提醒我们：<span class="theory-word">${d.problem}</span>的<span class="theory-word">${d.mechanism}</span>不是抽象的——它被<span class="theory-word">${d.context}</span>的文化逻辑塑造。而理解不同文化如何处理同一<span class="theory-word">${d.problem}</span>，恰恰是跨越文化隔阂最有力的方式——不是抹除差异，而是在差异中看见结构的共同底线。`,
+      (d) => `最后，<span class="collapse-word">${d.collapse}</span>将<em>${obj}</em>从一个"外国电影"变成了一面跨文化镜子。我们在<span class="theory-word">${d.framework}</span>的框架下看见：<span class="theory-word">${d.problem}</span>不分国界，但<span class="theory-word">${d.mechanism}</span>永远受语境塑造。正是这种"相同问题的不同表达"，才是真正的文化对话起点。`
+    ]
+  }
+};
+
+// === 电影锚点提取 ===
+// 从FILM_DB提取具体可引用的电影元素，用于场景锚定
+
+function getFilmAnchor(film) {
+  if (!film) return null;
+  // 从spaces/motifs/chars中随机选一个具体元素作为场景锚点
+  const anchors = [];
+  // 空间锚点（最具体）
+  film.spaces.forEach(s => anchors.push(s));
+  // 意象锚点
+  film.motifs.slice(0, 3).forEach(m => anchors.push(m));
+  // 人物锚点
+  if (film.chars && film.chars.length > 0) anchors.push(`${film.chars[0]}的行动`);
+  return anchors.length > 0 ? rand(anchors) : null;
+}
+
+function getFilmDetail(film) {
+  if (!film) return null;
+  // 从motifs/chars中随机选一个更具体的细节元素
+  const details = [];
+  film.motifs.forEach(m => details.push(m));
+  if (film.chars && film.chars.length > 0) details.push(`${film.chars[0]}`);
+  return details.length > 0 ? rand(details) : null;
+}
+
+// 从结构增强节点的interpNotes中提取底层诊断句
+function getFilmNote(film) {
+  if (!film || !film.interpNotes || film.interpNotes.length === 0) return null;
+  return rand(film.interpNotes);
+}
+
+// === 状态 ===
+let currentDice = {};
+let currentObject = '';
+let currentConfidence = '';
+let currentStyle = 'djh'; // 蒸馏风格随机分配
+let currentDiceRegisters = null; // 每颗骰子的 register（inside/around）
+let engineMode = 'template'; // 'template' | 'api'
+let apiInterpText = ''; // API返回的解读文本
+let aiExtractedFilm = null; // AI提取的电影结构数据（FILM_DB格式）
+let filmDataSource = 'local'; // 'local' | 'ai' | 'none'
+let currentDirector = null; // 当前电影识别的导演（DIRECTOR_DB条目，含所有字段）
+let _apiReqSeq = 0; // API请求序列号，防止旧请求覆盖新结果
+let _forcedReadingMode = null; // 'inside' | 'around' | null（自动）
+
+function setReadingMode(mode) {
+  _forcedReadingMode = mode === 'auto' ? null : mode;
+  // 更新按钮激活状态
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === mode);
+  });
+}
+let autoExtractionEnabled = true; // 自动提取未知电影开关（默认开启）
+
+function rand(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function randConfidence() { return (85 + Math.random() * 14.7).toFixed(1); }
+function randStyle() { return rand(['djh', 'ebert', 'kael', 'zizek', 'zhouliming']); }
+
+function generateInterpretation(d, obj, filmOverride) {
+  const film = filmOverride || getFilmData(obj);
+  const profile = STYLE_PROFILES[currentStyle];
+  const templates = DISTILLED_TEMPLATES[currentStyle];
+
+  // 判断主要阅读模式
+  const dominantMode = currentDiceRegisters ? (
+    Object.values(currentDiceRegisters).filter(r => r === 'around').length >= 2 ? 'around' : 'inside'
+  ) : 'inside';
+
+  // Around 模式提示句
+  const modeHint = dominantMode === 'around'
+    ? `<span class="mode-hint">〔Around the Film——不是解读内部如何工作，而是追问它为什么出现〕</span><br><br>`
+    : '';
+
+  // 骰子主导词标签——让骰子的存在感更明确
+  // 找出核心驱动词：problem + director 中的关键词
+  const diceLead = `<span class="dice-lead">🎲 ${d.problem} × ${d.director || d.object}</span><br>`;
+
+  // 3段式：opening + diagnosis + closing
+  const sectionKeys = Object.keys(templates);
+  const opening = rand(templates[sectionKeys[0]])(d, obj, film);
+  const diagnosis = rand(templates[sectionKeys[1]])(d, obj, film);
+  const closing = rand(templates[sectionKeys[2]])(d);
+
+  // 收尾追问——根据阅读模式生成不同方向的结尾问题
+  const closingQuestion = dominantMode === 'around'
+    ? `<br><span class="closing-question">如果${d.collapse}本身就是${d.problem}的维持机制，那我们是否从未真正离开？</span>`
+    : `<br><span class="closing-question">当${d.mechanism}不止运作于${d.object}，而是渗入每一次观看——那观众究竟看到了什么？</span>`;
+
+  // 结构增强节点
+  const note = getFilmNote(film);
+  const noteSpan = note ? `<span class="structure-note">【结构诊断：${note}】</span>` : '';
+
+  return `${modeHint}${diceLead}${opening} ${diagnosis} ${closing}${closingQuestion} ${noteSpan}`;
+}
+
+// === 掷骰动画 ===
+const STATUS_MESSAGES = [
+  '检索电影结构...',
+  '选择哲学家...',
+  '建构意识形态...',
+  '生成置信度...',
+  '寻找隐匿结构...',
+  '诊断崩塌...',
+  '完成。'
+];
+
+async function startRoll() {
+  const input = document.getElementById('objectInput').value.trim();
+  if (!input) {
+    document.getElementById('objectInput').focus();
+    return;
+  }
+  currentObject = input;
+  currentStyle = randStyle(); // 随机分配风格
+  aiExtractedFilm = null; // 重置AI提取数据
+  currentDirector = null; // 重置导演数据
+  apiInterpText = '';
+
+  // === 第一步：获取电影结构数据 ===
+  // 先查本地FILM_DB
+  let film = getFilmData(input);
+
+  if (film) {
+    // 本地命中，直接使用
+    filmDataSource = 'local';
+  } else if (engineMode === 'api' && autoExtractionEnabled) {
+    // 本地未命中 + API模式 + 自动提取开启 → 调用AI提取
+    filmDataSource = 'ai';
+    
+    // 显示提取overlay
+    const overlay = document.getElementById('extractionOverlay');
+    const extText = document.getElementById('extractionText');
+    const extSub = document.getElementById('extractionSub');
+    overlay.classList.add('active');
+    extText.textContent = `正在提取《${input}》的结构...`;
+    extSub.textContent = 'AI 分析电影的主题、冲突、空间与理论适配度';
+
+    try {
+      film = await callApiForExtraction(input);
+      if (film) {
+        aiExtractedFilm = film;
+        // 缓存到sessionStorage
+        const cacheKey = `film_${input.replace(/[《》\s]/g, '')}`;
+        sessionStorage.setItem(cacheKey, JSON.stringify(film));
+      } else {
+        filmDataSource = 'none';
+      }
+    } catch(err) {
+      console.error('结构提取失败:', err);
+      filmDataSource = 'none';
+      // 提取失败不阻止掷骰，只是骰子不受电影数据加权
+    }
+
+    // 隐藏提取overlay
+    overlay.classList.remove('active');
+  } else {
+    // 本地未命中 + 模板模式 或 自动提取关闭 → 无电影数据
+    filmDataSource = 'none';
+  }
+
+  // === 第二步：掷骰（使用获取到的电影数据） ===
+  rollDice(film);
+
+  // 切换界面
+  document.getElementById('homeScreen').classList.add('hidden');
+  document.getElementById('rollingScreen').classList.add('active');
+  document.getElementById('objectDisplay').textContent = input;
+
+  // 构建骰子槽位
+  const slotsContainer = document.getElementById('diceSlots');
+  slotsContainer.innerHTML = '';
+  for (const key of DICE_ORDER) {
+    const slot = document.createElement('div');
+    slot.className = 'dice-slot';
+    slot.innerHTML = `
+      <span class="slot-label">${DICE[key].label}</span>
+      <span class="slot-value rolling" id="slot-${key}">...</span>
+    `;
+    slotsContainer.appendChild(slot);
+  }
+
+  // 启动动画
+  animateRolling();
+}
+
+function animateRolling() {
+  const statusEl = document.getElementById('rollStatus');
+  let step = 0;
+  const totalSteps = DICE_ORDER.length;
+
+  function rollStep() {
+    if (step >= totalSteps) {
+      statusEl.textContent = '完成。';
+      statusEl.classList.add('done');
+      setTimeout(showResult, 600);
+      return;
+    }
+
+    const key = DICE_ORDER[step];
+    const slotEl = document.getElementById(`slot-${key}`);
+    statusEl.textContent = STATUS_MESSAGES[step];
+
+    // 快速随机滚动
+    // framework 只有 .words；其他骰子是 inside/around 双轨结构
+    const rollPool = DICE[key].words
+      ? DICE[key].words
+      : [...(DICE[key].inside || []), ...(DICE[key].around || [])];
+    let cycles = 0;
+    const maxCycles = 8 + Math.floor(Math.random() * 6);
+    const cycleInterval = setInterval(() => {
+      slotEl.textContent = rand(rollPool);
+      cycles++;
+      if (cycles >= maxCycles) {
+        clearInterval(cycleInterval);
+        slotEl.textContent = currentDice[key];
+        slotEl.classList.remove('rolling');
+        slotEl.classList.add('settled');
+        step++;
+        setTimeout(rollStep, 300);
+      }
+    }, 80);
+  }
+
+  rollStep();
+}
+
+function showResult() {
+  document.getElementById('rollingScreen').classList.remove('active');
+  document.getElementById('resultScreen').classList.add('active');
+
+  currentConfidence = randConfidence();
+
+  document.getElementById('resultObject').textContent = currentObject;
+  document.getElementById('styleTag').textContent = STYLE_PROFILES[currentStyle].tag;
+
+  // 引擎标识
+  const engineBadgeEl = document.getElementById('resultEngineBadge');
+  if (engineBadgeEl) {
+    if (engineMode === 'api') {
+      engineBadgeEl.className = 'api-engine-badge api';
+      engineBadgeEl.textContent = 'AI';
+    } else {
+      engineBadgeEl.className = 'api-engine-badge template';
+      engineBadgeEl.textContent = '模板';
+    }
+  }
+
+  // 数据来源标识
+  const dataSourceEl = document.getElementById('dataSourceBadge');
+  if (dataSourceEl) {
+    if (filmDataSource === 'local') {
+      dataSourceEl.className = 'data-source-badge local';
+      dataSourceEl.textContent = '本地数据';
+    } else if (filmDataSource === 'ai') {
+      dataSourceEl.className = 'data-source-badge ai';
+      dataSourceEl.textContent = 'AI提取';
+    } else {
+      dataSourceEl.className = 'data-source-badge';
+      dataSourceEl.textContent = '';
+      dataSourceEl.style.display = 'none';
+    }
+  }
+
+  // 导演谱系徽章
+  const directorBadgeEl = document.getElementById('directorBadge');
+  if (directorBadgeEl) {
+    if (currentDirector) {
+      directorBadgeEl.className = 'director-badge';
+      directorBadgeEl.textContent = `🎬 ${currentDirector.key}`;
+    } else {
+      directorBadgeEl.className = 'director-badge hidden';
+      directorBadgeEl.textContent = '';
+    }
+  }
+
+  // 使用实际的电影数据（本地或AI提取）
+  const film = aiExtractedFilm || getFilmData(currentObject);
+
+  // 结构增强节点徽章
+  const badge = document.getElementById('structureBadge');
+  if (film && film.type === 'structure_node') {
+    badge.classList.remove('hidden');
+  } else {
+    badge.classList.add('hidden');
+  }
+
+  // 构建链式图（标注 register + 追问）——写在分享卡片的链区
+  const chainEl = document.getElementById('shareCardChain');
+  chainEl.innerHTML = '';
+  // 追问映射——每颗骰子的词→一个追问方向
+  const chainQuestions = {
+    framework:  (w) => `${w}会怎么看？`,
+    problem:    (w) => `为什么${w}是核心问题？`,
+    object:     (w) => `${w}如何被塑造？`,
+    director:   (w) => `导演的${w}意味着什么？`,
+    mechanism:  (w) => `${w}是怎么运作的？`,
+    context:    (w) => `在${w}的背景下？`,
+    collapse:   (w) => `于是——${w}？`
+  };
+  for (let i = 0; i < DICE_ORDER.length; i++) {
+    const key = DICE_ORDER[i];
+    const register = currentDiceRegisters ? currentDiceRegisters[key] : 'inside';
+    const registerTag = DICE_REGISTER[key] === 'dual' && register === 'around'
+      ? `<span class="chain-node-register around">Around</span>`
+      : DICE_REGISTER[key] === 'dual' && register === 'inside'
+        ? `<span class="chain-node-register inside">Inside</span>`
+        : '';
+    const node = document.createElement('div');
+    node.className = 'chain-node';
+    node.innerHTML = `<span class="chain-node-label">${DICE[key].label}</span>${currentDice[key]}${registerTag}`;
+    chainEl.appendChild(node);
+    if (i < DICE_ORDER.length - 1) {
+      const arrow = document.createElement('div');
+      arrow.className = 'chain-arrow';
+      // 追问提示：用当前骰子词生成一个问题
+      const question = chainQuestions[key] ? chainQuestions[key](currentDice[key]) : '↓';
+      arrow.innerHTML = `<span class="chain-question">${question}</span>`;
+      chainEl.appendChild(arrow);
+    }
+  }
+
+  // 阅读模式徽章
+  const modeBadgeEl = document.getElementById('readingModeBadge');
+  if (modeBadgeEl) {
+    if (currentDiceRegisters) {
+      const aroundCount = Object.values(currentDiceRegisters).filter(r => r === 'around').length;
+      const dualCount = Object.values(currentDiceRegisters).filter(r => DICE_REGISTER[Object.keys(currentDiceRegisters).find(k => currentDiceRegisters[k] === r)] === 'dual').length;
+      if (aroundCount >= 3) {
+        modeBadgeEl.className = 'reading-mode-badge around';
+        modeBadgeEl.textContent = 'Around';
+      } else if (aroundCount >= 1) {
+        modeBadgeEl.className = 'reading-mode-badge mixed';
+        modeBadgeEl.textContent = 'Mixed';
+      } else {
+        modeBadgeEl.className = 'reading-mode-badge inside';
+        modeBadgeEl.textContent = 'Inside';
+      }
+    } else {
+      modeBadgeEl.className = 'reading-mode-badge inside';
+      modeBadgeEl.textContent = 'Inside';
+    }
+  }
+
+  // 置信度——由buildShareCard写入卡片
+
+  // 评论 —— 双引擎
+  if (engineMode === 'api') {
+    // API引擎：显示加载状态，然后调用API
+    apiInterpText = '';
+    document.getElementById('shareCardReview').innerHTML = '<span style="color:var(--accent);font-style:italic;">正在生成解读...</span>';
+    callApiForInterpretation();
+  } else {
+    // 模板引擎：使用AI提取数据（如有）或本地数据
+    const templateFilm = aiExtractedFilm || getFilmData(currentObject);
+    document.getElementById('shareCardReview').innerHTML = generateInterpretation(currentDice, currentObject, templateFilm);
+  }
+
+  // 构建分享卡片（API引擎在API返回后更新评论文本，但先更新骰子链和置信度）
+  buildShareCard();
+
+  // 重置揭示
+  document.getElementById('revealText').classList.remove('visible');
+}
+
+// buildShareCard() 已移至API引擎系统区域（双引擎版本）
+
+function reroll() {
+  document.getElementById('resultScreen').classList.remove('active');
+  currentStyle = randStyle(); // 重新随机风格
+  // 再掷时使用已有的电影数据（本地或AI提取），不再重新提取
+  const film = aiExtractedFilm || getFilmData(currentObject);
+  rollDice(film);
+  document.getElementById('rollingScreen').classList.add('active');
+  document.getElementById('objectDisplay').textContent = currentObject;
+  document.getElementById('rollStatus').classList.remove('done');
+
+  const slotsContainer = document.getElementById('diceSlots');
+  slotsContainer.innerHTML = '';
+  for (const key of DICE_ORDER) {
+    const slot = document.createElement('div');
+    slot.className = 'dice-slot';
+    slot.innerHTML = `
+      <span class="slot-label">${DICE[key].label}</span>
+      <span class="slot-value rolling" id="slot-${key}">...</span>
+    `;
+    slotsContainer.appendChild(slot);
+  }
+  animateRolling();
+}
+
+function goHome() {
+  document.getElementById('resultScreen').classList.remove('active');
+  document.getElementById('rollingScreen').classList.remove('active');
+  document.getElementById('homeScreen').classList.remove('hidden');
+  document.getElementById('objectInput').value = '';
+  document.getElementById('objectInput').focus();
+}
+
+// === 分享 ===
+// getShareText() 已移至API引擎系统区域（双引擎版本）
+
+function copyResult() {
+  navigator.clipboard.writeText(getShareText()).then(() => {
+    showToast('已复制到剪贴板');
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = getShareText();
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('已复制到剪贴板');
+  });
+}
+
+function saveShareCard() {
+  const card = document.getElementById('shareCard');
+  showToast('正在生成卡片图片...');
+  
+  html2canvas(card, {
+    scale: 2,
+    backgroundColor: '#FAFAF8',
+    useCORS: true,
+    logging: false,
+    onclone: function(clonedDoc) {
+      // Ensure the cloned card has proper styling
+      const clonedCard = clonedDoc.getElementById('shareCard');
+      if (clonedCard) {
+        clonedCard.style.boxShadow = 'none';
+      }
+    }
+  }).then(function(canvas) {
+    // Create download link
+    const link = document.createElement('a');
+    link.download = `骰评-${currentObject}-${currentDice.framework}×${currentDice.problem}×${currentDice.collapse}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    showToast('卡片已保存为 PNG 图片');
+  }).catch(function(err) {
+    console.error('html2canvas error:', err);
+    // Fallback: open in new window
+    showToast('图片生成失败，尝试截图方式...');
+    fallbackSaveCard();
+  });
+}
+
+function fallbackSaveCard() {
+  const card = document.getElementById('shareCard');
+  const cardHTML = card.outerHTML;
+  const standalone = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body { background: #FAFAF8; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 2rem; }
+.share-card { background: #FAFAF8; border: 2px solid #533483; border-radius: 16px; padding: 2rem 2.5rem; width: 420px; position: relative; overflow: hidden; }
+.share-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 6px; background: linear-gradient(90deg, #533483, #E94560); }
+.share-card-brand { font-family: 'Noto Serif SC', serif; font-size: 1.6rem; font-weight: 700; color: #533483; letter-spacing: 0.1em; margin-bottom: 0.1rem; }
+.share-card-sub { font-family: 'Noto Sans SC', sans-serif; font-size: 0.65rem; color: #888; margin-bottom: 1.2rem; }
+.share-card-object { font-family: 'Noto Serif SC', serif; font-size: 1.4rem; font-weight: 700; color: #1A1A1A; text-align: center; margin-bottom: 1rem; padding-bottom: 0.6rem; border-bottom: 1px dashed #E8DFF5; }
+.share-card-chain { display: flex; flex-direction: column; align-items: center; gap: 0; margin-bottom: 0.8rem; }
+.share-card-node { display: flex; align-items: center; gap: 0.5rem; font-family: 'Noto Serif SC', serif; font-size: 0.95rem; font-weight: 600; color: #1A1A1A; padding: 0.2rem 0; }
+.share-card-node .node-label { font-family: 'Noto Sans SC', sans-serif; font-size: 0.6rem; color: #888; min-width: 60px; }
+.share-card-node.first-node { color: #533483; }
+.share-card-node.last-node { color: #E94560; font-weight: 700; }
+.share-card-arrow { color: #888; font-size: 0.8rem; line-height: 1; }
+.share-card-confidence { display: flex; justify-content: center; align-items: center; gap: 0.4rem; margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px dashed #E8DFF5; }
+.share-card-confidence .cf-label { font-family: 'Noto Sans SC', sans-serif; font-size: 0.7rem; color: #888; }
+.share-card-confidence .cf-value { font-family: 'Noto Sans SC', sans-serif; font-size: 1.2rem; font-weight: 700; color: #E94560; }
+.share-card-confidence .cf-unit { font-family: 'Noto Sans SC', sans-serif; font-size: 0.7rem; color: #888; }
+.share-card-watermark { font-family: 'Noto Sans SC', sans-serif; font-size: 0.6rem; color: #888; text-align: center; margin-top: 0.8rem; opacity: 0.5; }
+.share-card-review-label { font-family: 'Noto Sans SC', sans-serif; font-size: 0.7rem; color: #888; border-bottom: 1px solid #E8DFF5; padding-bottom: 0.3rem; margin-bottom: 0.5rem; }
+.share-card-review { font-family: 'Noto Serif SC', serif; font-size: 0.85rem; line-height: 1.6; color: #1A1A1A; margin-bottom: 1rem; }
+.share-card-analysis-label { font-family: 'Noto Sans SC', sans-serif; font-size: 0.7rem; color: #888; border-bottom: 1px solid #E8DFF5; padding-bottom: 0.3rem; margin-bottom: 0.5rem; }
+.share-card-disclaimer { font-family: 'Noto Serif SC', serif; font-size: 0.75rem; color: #888; text-align: center; margin-top: 0.6rem; line-height: 1.6; letter-spacing: 0.02em; opacity: 0.7; }
+</style>
+</head>
+<body>
+${cardHTML}
+</body>
+</html>`;
+  const w = window.open('', '_blank', 'width=500,height=700');
+  if (w) {
+    w.document.write(standalone);
+    w.document.close();
+    showToast('在新窗口打开卡片，请截图保存');
+  } else {
+    showToast('弹窗被浏览器拦截，请允许弹窗后重试');
+  }
+}
+
+function shareToX() {
+  const text = encodeURIComponent(getShareText());
+  window.open(`https://x.com/intent/tweet?text=${text}`, '_blank');
+}
+
+function revealJoke() {
+  document.getElementById('revealText').classList.toggle('visible');
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('visible');
+  setTimeout(() => toast.classList.remove('visible'), 2000);
+}
+
+// === 键盘 ===
+document.getElementById('objectInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') startRoll();
+});
+
+// =========================================================
+// === API引擎系统 ===
+// =========================================================
+
+// --- API配置管理 ---
+const API_PROVIDERS = {
+  openai: {
+    name: 'OpenAI',
+    endpoint: 'https://api.openai.com/v1/chat/completions',
+    models: [
+      { value: 'gpt-4o-mini', label: 'GPT-4o-mini' },
+      { value: 'gpt-4o', label: 'GPT-4o' },
+      { value: 'gpt-4.1-mini', label: 'GPT-4.1-mini' },
+      { value: 'gpt-4.1', label: 'GPT-4.1' }
+    ]
+  },
+  deepseek: {
+    name: 'DeepSeek',
+    endpoint: 'https://api.deepseek.com/v1/chat/completions',
+    models: [
+      { value: 'deepseek-chat', label: 'DeepSeek-V3' },
+      { value: 'deepseek-reasoner', label: 'DeepSeek-R1' }
+    ]
+  },
+  custom: {
+    name: '自定义',
+    endpoint: '',
+    models: [
+      { value: 'custom-model', label: '自定义模型' }
+    ]
+  },
+  ollama: {
+    name: 'Ollama（本地）',
+    endpoint: 'http://localhost:11434/v1/chat/completions',
+    models: [
+      { value: 'qwen2.5:14b', label: 'Qwen2.5 14B' },
+      { value: 'qwen2.5:7b', label: 'Qwen2.5 7B' },
+      { value: 'qwen2.5:72b', label: 'Qwen2.5 72B' },
+      { value: 'deepseek-r1:14b', label: 'DeepSeek-R1 14B' },
+      { value: 'deepseek-r1:7b', label: 'DeepSeek-R1 7B' },
+      { value: 'llama3.2:3b', label: 'Llama 3.2 3B' },
+      { value: 'llama3.1:8b', label: 'Llama 3.1 8B' },
+      { value: 'mistral:7b', label: 'Mistral 7B' },
+      { value: 'mistral-nemo:12b', label: 'Mistral Nemo 12B' },
+      { value: 'gemma2:9b', label: 'Gemma 2 9B' },
+      { value: 'phi4:14b', label: 'Phi-4 14B' }
+    ]
+  }
+};
+
+// 从localStorage恢复配置
+function loadApiConfig() {
+  const saved = localStorage.getItem('diceApiConfig');
+  if (saved) {
+    try {
+      const cfg = JSON.parse(saved);
+      document.getElementById('apiProvider').value = cfg.provider || 'deepseek';
+      document.getElementById('apiKeyInput').value = cfg.apiKey || '';
+      document.getElementById('apiEndpoint').value = cfg.endpoint || '';
+      document.getElementById('apiModeToggle').checked = cfg.apiMode || false;
+      document.getElementById('autoExtractionToggle').checked = cfg.autoExtraction !== false;
+      autoExtractionEnabled = cfg.autoExtraction !== false;
+      engineMode = cfg.apiMode ? 'api' : 'template';
+      onProviderChange();
+      if (cfg.model) document.getElementById('apiModel').value = cfg.model;
+      document.getElementById('autoExtractionRow').style.display = engineMode === 'api' ? 'flex' : 'none';
+      updateEngineUI();
+    } catch(e) { console.warn('API配置恢复失败', e); }
+  } else {
+    // 首次访问：预填DeepSeek默认配置
+    document.getElementById('apiProvider').value = 'deepseek';
+    document.getElementById('apiKeyInput').value = 'sk-db8545d5f3984ec394867778b636bd98';
+    onProviderChange();
+    document.getElementById('apiModel').value = 'deepseek-chat';
+    document.getElementById('autoExtractionToggle').checked = true;
+    autoExtractionEnabled = true;
+    saveApiConfig(); // 保存默认配置到localStorage
+  }
+}
+
+function saveApiConfig() {
+  autoExtractionEnabled = document.getElementById('autoExtractionToggle').checked;
+  const cfg = {
+    provider: document.getElementById('apiProvider').value,
+    apiKey: document.getElementById('apiKeyInput').value,
+    model: document.getElementById('apiModel').value,
+    endpoint: document.getElementById('apiEndpoint').value,
+    apiMode: document.getElementById('apiModeToggle').checked,
+    autoExtraction: autoExtractionEnabled
+  };
+  localStorage.setItem('diceApiConfig', JSON.stringify(cfg));
+}
+
+function toggleApiConfig() {
+  const panel = document.getElementById('apiConfigPanel');
+  const toggle = document.getElementById('apiConfigToggle');
+  panel.classList.toggle('visible');
+  toggle.classList.toggle('active');
+}
+
+function toggleApiMode() {
+  const checked = document.getElementById('apiModeToggle').checked;
+  engineMode = checked ? 'api' : 'template';
+  // 自动提取开关只在API模式下显示
+  document.getElementById('autoExtractionRow').style.display = engineMode === 'api' ? 'flex' : 'none';
+  updateEngineUI();
+  saveApiConfig();
+}
+
+function updateEngineUI() {
+  const badge = document.getElementById('engineBadge');
+  const isApi = engineMode === 'api';
+
+  if (isApi) {
+    badge.className = 'api-engine-badge api';
+    badge.textContent = 'AI';
+  } else {
+    badge.className = 'api-engine-badge template';
+    badge.textContent = '模板';
+  }
+}
+
+function onProviderChange() {
+  const provider = document.getElementById('apiProvider').value;
+  const providerData = API_PROVIDERS[provider];
+  const modelSelect = document.getElementById('apiModel');
+  const customGroup = document.getElementById('customEndpointGroup');
+
+  // 更新模型下拉
+  modelSelect.innerHTML = '';
+
+  if (provider === 'ollama') {
+    // Ollama 模式：从本地 API 拉取真实模型列表，兼容任何路径配置
+    modelSelect.innerHTML = '<option value="">正在加载本地模型...</option>';
+    const endpoint = document.getElementById('apiEndpoint').value || providerData.endpoint;
+    const tagsUrl = endpoint.replace(/\/v1\/chat\/completions$/, '/api/tags');
+    fetch(tagsUrl)
+      .then(r => r.json())
+      .then(data => {
+        modelSelect.innerHTML = '';
+        if (data.models && data.models.length > 0) {
+          data.models.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.name;
+            opt.textContent = m.name;
+            modelSelect.appendChild(opt);
+          });
+        } else {
+          // fallback：默认常见模型
+          providerData.models.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.value;
+            opt.textContent = m.label;
+            modelSelect.appendChild(opt);
+          });
+        }
+        saveApiConfig();
+      })
+      .catch(() => {
+        // API 不可达时用硬编码列表兜底
+        modelSelect.innerHTML = '';
+        providerData.models.forEach(m => {
+          const opt = document.createElement('option');
+          opt.value = m.value;
+          opt.textContent = m.label;
+          modelSelect.appendChild(opt);
+        });
+      });
+  } else {
+    providerData.models.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m.value;
+      opt.textContent = m.label;
+      modelSelect.appendChild(opt);
+    });
+  }
+
+  // 自定义endpoint显示/隐藏
+  if (provider === 'custom') {
+    customGroup.style.display = 'block';
+  } else {
+    customGroup.style.display = 'none';
+    // 预填endpoint
+    document.getElementById('apiEndpoint').value = providerData.endpoint;
+  }
+
+  saveApiConfig();
+}
+
+// ============================================================
+// === 导演识别（从电影名→DIRECTOR_DB匹配） ===
+// ============================================================
+// 尝试从多个维度匹配导演：
+// 1. AI提取时返回的 director 字段（精确匹配）
+// 2. 用电影名在 DIRECTOR_DB 的知名作品中模糊匹配
+function identifyDirector(movieTitleOrName) {
+  if (!movieTitleOrName || typeof DIRECTOR_DB === 'undefined') return null;
+  const clean = movieTitleOrName.replace(/[《》\s]/g, '');
+
+  // 精确匹配导演名
+  if (DIRECTOR_DB[clean]) {
+    return { key: clean, ...DIRECTOR_DB[clean] };
+  }
+
+  // 模糊匹配：检查知名作品（无专门字段，暂靠导演名直接匹配）
+  // 本地FILM_DB中若存有导演字段，后续可从这个方向增强
+  // 当前主要依赖AI返回的director字段精确匹配
+  return null;
+}
+
+// 重置导演数据（每次新掷骰时调用）
+function resetDirector() {
+  currentDirector = null;
+  const badgeEl = document.getElementById('directorBadge');
+  if (badgeEl) {
+    badgeEl.className = 'director-badge hidden';
+    badgeEl.textContent = '';
+  }
+}
+
+// ============================================================
+// === 结构化提取引擎（AI提取未知电影的结构数据） ===
+// ============================================================
+// 当FILM_DB未命中时，调用AI提取themes/conflicts/spaces/motifs/theoryFit
+// 返回与FILM_DB条目格式完全一致的JSON → migrateToTensions()转换为张力标签
+
+function buildExtractionPrompt(movieName) {
+  const allTheorists = Object.keys(AFFINITY);
+
+  return `你是一位电影语言分析专家，同时也是电影工业与文化研究学者。请为电影《${movieName}》提取结构化数据，严格按以下 JSON 格式返回，不要输出任何其他内容。
+
+{
+  "en": "English title of the film",
+  "internal_structure": {
+    "themes": ["主题1", "主题2", "主题3", "主题4", "主题5"],
+    "conflicts": ["对抗关系1（用vs连接，如：个体vs集体）", "对抗关系2", "对抗关系3"],
+    "spaces": ["核心空间1", "核心空间2", "核心空间3"],
+    "motifs": ["重复出现的意象/物件1", "意象2", "意象3"],
+    "chars": ["关键角色1", "角色2", "角色3"]
+  },
+  "cultural_symptom": {
+    "industrial_position": "该片在电影工业中的定位（如：超级IP续作/类型片标杆/独立制作/流媒体定制等）",
+    "audience_contract": "该片与观众之间建立的隐性合约（如：提供感官刺激/满足情感需求/延续IP忠诚/服务粉丝社群等）",
+    "platform_logic": "该片在传播平台的运作逻辑（如：算法推荐驱动/社交话题驱动/跨平台营销/IP宇宙引流等）",
+    "ideological_function": "该片在文化层面执行的功能（如：确认主流价值观/缓解社会焦虑/制造消费欲望/转移注意力等）",
+    "market_cycle": "该片在市场周期中的位置（如：IP膨胀期/类型疲劳期/技术迭代期/观众偏好转向期等）"
+  },
+  "director": "该电影的导演姓名（如：奉俊昊）。如果没有记录或不确定，填空字符串\"\"。一个电影只有一个导演，不要写多位。写最被广泛认可的导演姓名。如不确定，写空字符串",
+  "theoryFit": {
+    ${allTheorists.map(t => `"${t}": 0-5之间的整数`).join(',\n    ')}
+  },
+  "readingMode": "inside或around或mixed",
+  "structuralConfidence": 0-100之间的整数
+}
+
+约束：
+- internal_structure 是文本内部的结构数据：
+  - themes 必须是从电影主题中抽象出的学术概念（如"异化"、"规训"、"欲望的流动性"），不是简单关键词
+  - conflicts 必须使用"A vs B"格式（如"个体vs集体"、"自由vs秩序"）
+  - spaces 必须是电影中实际出现的重要空间/场景
+  - motifs 必须是电影中反复出现的视觉意象或物件
+  - chars 必须是电影中的关键角色名
+- cultural_symptom 是文本外部的社会-工业-文化数据：
+  - 所有字段必须基于客观事实和分析，不可凭空编造
+  - 如果某些字段信息不足，填空字符串""而非猜测
+  - industrial_position/audience_contract/platform_logic/ideological_function/market_cycle 都应是简短但精确的一句话描述
+- readingMode 判断规则：
+  - "inside"：电影内部结构丰富，适合文本分析（如《寄生虫》《花样年华》）
+  - "around"：电影结构较薄，但文化-工业位置信息丰富，适合外部阅读（如《速度与激情》《变形金刚》）
+  - "mixed"：既有内部结构也有外部语境，两条路都有价值（如《阿凡达》《黑客帝国》）
+- structuralConfidence 表示电影内部结构的可分析程度，100=极度丰富，0=几乎没有可分析的结构
+- theoryFit 表示该电影与对应理论家的契合度，5为极度契合，0为无关
+- 只输出合法 JSON，不要加任何注释、解释或markdown格式标记`;
+}
+
+async function callApiForExtraction(movieName) {
+  const apiKey = document.getElementById('apiKeyInput').value.trim();
+  const provider = document.getElementById('apiProvider').value;
+  const model = document.getElementById('apiModel').value;
+
+  if (!apiKey && provider !== 'ollama') return null;
+
+  const providerData = API_PROVIDERS[provider];
+  let endpoint = provider === 'custom'
+    ? document.getElementById('apiEndpoint').value.trim()
+    : providerData.endpoint;
+
+  if (!endpoint) return null;
+
+  const prompt = buildExtractionPrompt(movieName);
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: [
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.3, // 低温度保证JSON输出稳定性
+        max_tokens: 500
+      })
+    });
+
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    const text = data.choices?.[0]?.message?.content?.trim() || '';
+
+    if (!text) return null;
+
+    // 解析JSON——AI可能返回带markdown标记的JSON
+    let jsonStr = text;
+    // 移除可能的markdown code block标记
+    jsonStr = jsonStr.replace(/^```json\s*/, '').replace(/^```\s*/, '').replace(/\s*```$/, '');
+    // 移除前后空白
+    jsonStr = jsonStr.trim();
+
+    const filmData = JSON.parse(jsonStr);
+
+    // 验证基本结构——兼容新旧格式
+    // 新格式：internal_structure + cultural_symptom
+    // 旧格式：themes + conflicts + spaces + motifs（直接字段）
+    if (filmData.internal_structure) {
+      // 新格式：展平 internal_structure 到顶层，保留 cultural_symptom
+      const internal = filmData.internal_structure;
+      if (!internal.themes || !Array.isArray(internal.themes)) return null;
+      if (!internal.conflicts || !Array.isArray(internal.conflicts)) return null;
+      if (!internal.spaces || !Array.isArray(internal.spaces)) return null;
+      if (!internal.motifs || !Array.isArray(internal.motifs)) return null;
+      // 展平到顶层（兼容现有 migrateToTensions/getFilmAnchor 等函数）
+      filmData.themes = internal.themes;
+      filmData.conflicts = internal.conflicts;
+      filmData.spaces = internal.spaces;
+      filmData.motifs = internal.motifs;
+      filmData.chars = internal.chars || [];
+      // readingMode 和 structuralConfidence
+      if (filmData.readingMode) {
+        filmData.readingMode = filmData.readingMode; // 'inside'|'around'|'mixed'
+      }
+      if (filmData.structuralConfidence) {
+        filmData.structuralConfidence = Math.max(0, Math.min(100, Math.round(filmData.structuralConfidence)));
+      }
+    } else {
+      // 旧格式：直接字段
+      if (!filmData.themes || !Array.isArray(filmData.themes)) return null;
+      if (!filmData.conflicts || !Array.isArray(filmData.conflicts)) return null;
+      if (!filmData.spaces || !Array.isArray(filmData.spaces)) return null;
+      if (!filmData.motifs || !Array.isArray(filmData.motifs)) return null;
+      // 旧格式默认 inside
+      filmData.readingMode = 'inside';
+      filmData.structuralConfidence = 75;
+    }
+
+    // theoryFit 数值范围校验
+    if (filmData.theoryFit) {
+      for (const [k, v] of Object.entries(filmData.theoryFit)) {
+        filmData.theoryFit[k] = Math.max(0, Math.min(5, Math.round(v)));
+      }
+    }
+
+    // 添加AI提取标记
+    filmData._source = 'ai_extraction';
+    filmData._extractedAt = new Date().toISOString();
+
+    // 提取导演信息 → 存入 currentDirector
+    if (filmData.director && typeof filmData.director === 'string' && filmData.director.trim()) {
+      const matched = identifyDirector(filmData.director.trim());
+      if (matched) {
+        currentDirector = matched;
+        console.log(`🎬 识别到导演：${matched.key}`);
+      }
+    }
+
+    return filmData;
+
+  } catch(err) {
+    console.error('结构提取API调用失败:', err);
+    return null;
+  }
+}
+
+// --- 获取电影数据（本地 + sessionStorage + AI fallback） ---
+function getFilmDataWithCache(input) {
+  // 1. 本地FILM_DB
+  const local = getFilmData(input);
+  if (local) return local;
+
+  // 2. sessionStorage缓存（同会话内有效）
+  const normalized = input.replace(/[《》\s]/g, '');
+  const cacheKey = `film_${normalized}`;
+  const cached = sessionStorage.getItem(cacheKey);
+  if (cached) {
+    try { return JSON.parse(cached); } catch(e) { /* ignore */ }
+  }
+
+  return null; // 需要AI提取
+}
+
+// --- API Prompt构建 ---
+function buildApiPrompt(d, obj, styleKey) {
+  const film = aiExtractedFilm || getFilmData(obj);
+  const profile = STYLE_PROFILES[styleKey];
+
+  // 判断当前主要的阅读模式
+  const dominantMode = currentDiceRegisters ? (
+    Object.values(currentDiceRegisters).filter(r => r === 'around').length >= 2 ? 'around' : 'inside'
+  ) : 'inside';
+
+  // 根据 mode 选择 Profile 参数集
+  const activeProfile = dominantMode === 'around' ? {
+    arc: profile.aroundArc || profile.arc,
+    rhetoric: profile.aroundRhetoric || profile.rhetoric,
+    theoryInsert: profile.aroundTheoryInsert || profile.theoryInsert,
+    closePattern: profile.aroundClosePattern || profile.closePattern
+  } : {
+    arc: profile.arc,
+    rhetoric: profile.rhetoric,
+    theoryInsert: profile.theoryInsert,
+    closePattern: profile.closePattern
+  };
+
+  // 骰子链（标注 register）
+  const diceChain = DICE_ORDER.map(k => {
+    const register = currentDiceRegisters ? currentDiceRegisters[k] : 'inside';
+    const registerTag = register === 'around' ? '〔Around〕' : '〔Inside〕';
+    return `${DICE[k].label}${DICE_REGISTER[k] === 'inside' ? '' : registerTag}：${d[k]}`;
+  }).join('\n');
+
+  // 电影结构数据（如有）
+  let filmContext = '';
+  if (film) {
+    const sourceTag = film._source === 'ai_extraction' ? '（AI提取）' : '（本地数据库）';
+    filmContext = `\n\n## 电影结构数据${sourceTag}\n`;
+    filmContext += `英文标题: ${film.en || 'N/A'}\n`;
+    // 内部结构
+    if (film.themes) filmContext += `核心主题: ${film.themes.join('、')}\n`;
+    if (film.conflicts) filmContext += `核心冲突: ${film.conflicts.join('、')}\n`;
+    if (film.spaces) filmContext += `空间结构: ${film.spaces.join('、')}\n`;
+    if (film.motifs) filmContext += `关键意象: ${film.motifs.join('、')}\n`;
+    if (film.chars) filmContext += `关键角色: ${film.chars.join('、')}\n`;
+    // 文化症候数据
+    if (film.culturalSymptom) {
+      filmContext += `\n## 文化症候数据\n`;
+      const cs = film.culturalSymptom;
+      if (cs.industrial_position) filmContext += `工业定位: ${cs.industrial_position}\n`;
+      if (cs.audience_contract) filmContext += `观众合约: ${cs.audience_contract}\n`;
+      if (cs.platform_logic) filmContext += `平台逻辑: ${cs.platform_logic}\n`;
+      if (cs.ideological_function) filmContext += `意识形态功能: ${cs.ideological_function}\n`;
+      if (cs.market_cycle) filmContext += `市场周期: ${cs.market_cycle}\n`;
+    }
+    if (film.theoryFit) {
+      const topTheory = Object.entries(film.theoryFit)
+        .sort((a,b) => b[1]-a[1])
+        .slice(0,3)
+        .map(([k,v]) => `${k}(权重${v})`)
+        .join('、');
+      filmContext += `理论适配: ${topTheory}\n`;
+    }
+    if (film.readingMode) filmContext += `阅读模式: ${film.readingMode}\n`;
+    if (film.structuralConfidence) filmContext += `结构置信度: ${film.structuralConfidence}\n`;
+    if (film.type === 'structure_node' && film.interpNotes) {
+      filmContext += `\n【结构增强节点·诊断笔记】: ${film.interpNotes.join(' / ')}\n`;
+    }
+  }
+
+  // 阅读模式说明
+  // 导演谱系先验锚点
+  let directorAnchor = '';
+  if (currentDirector && currentDirector.structural_diagnosis) {
+    directorAnchor = `\n\n## 导演谱系锚点
+⚠️ 以下是一段导演风格的结构性判断，它是权威的。你的任务不是挑战它，而是用它作为分析坐标：判断当前电影是延续了这条谱系，还是变异/对抗了它。
+🎬 ${currentDirector.key}：${currentDirector.structural_diagnosis}\n`;
+  }
+
+  const modeInstruction = dominantMode === 'around'
+    ? `\n\n## 阅读模式：Around（Around the Film）
+本次分析以"围绕电影的外部阅读"为主。重点不是电影文本内部如何工作，而是：为什么这部电影会出现？它满足了什么文化需求？它在工业-平台-观众层面如何运作？请围绕骰子中标注〔Around〕的维度展开外部分析，对标注〔Inside〕的维度做内部分析。`
+    : `\n\n## 阅读模式：Inside（Inside the Film）
+本次分析以"进入电影文本的内部阅读"为主。重点是电影内部如何组织意义、空间如何建构、叙事如何运行。请围绕骰子中标注〔Inside〕的维度展开文本分析。`;
+
+  // 风格Profile参数
+  let styleContext = `\n\n## 评论风格参数\n`;
+  styleContext += `蒸馏对象: ${profile.name}\n`;
+  styleContext += `风格标签: ${profile.tag}\n`;
+  styleContext += `论证弧线: ${activeProfile.arc.join(' → ')}\n`;
+  styleContext += `修辞装置: 句式=${activeProfile.rhetoric.sentenceLen}, 开篇=${activeProfile.rhetoric.openPattern}, 过渡=${activeProfile.rhetoric.transition}, 代词=${activeProfile.rhetoric.pronoun}\n`;
+  styleContext += `理论嵌入方式: ${activeProfile.theoryInsert}\n`;
+  styleContext += `收尾模式: ${activeProfile.closePattern}\n`;
+
+  const theoryInsertDesc = {
+    'explicit': '理论术语显式命名出现',
+    'implicit': '理论逻辑隐含在分析中，不直接命名术语',
+    'target': '理论作为批判靶子出现',
+    'engine': '理论驱动核心反转，贯穿全文',
+    'cultural': '理论以文化研究视角嵌入，分析电影的社会功能而非文本结构',
+    'industrialTarget': '理论批判电影工业公式，而非文本内部的运作',
+    'culturalEngine': '理论驱动文化症候诊断，揭示"为什么这部电影会出现"而非"文本如何工作"'
+  };
+
+  const closePatternDesc = {
+    'political': '政治判断收尾',
+    'emotional': '情感洞察收尾',
+    'verdict': '痛快判决收尾',
+    'openEnded': '"and so on..."开放式收尾',
+    'bridge': '文化桥梁收尾——回归不同文化对同一问题的不同处理',
+    'structuralVerdict': '结构判断收尾——指出工业/文化层面的结构终局',
+    'audienceInsight': '观众洞察收尾——回到"为什么我们愿意看"',
+    'industrialVerdict': '工业判决收尾——判定类型/IP/平台的终局',
+    'structuralOpenEnded': '结构开放式收尾——"这种循环不会停止，and so on..."',
+    'globalBridge': '全球桥梁收尾——指出跨国资本/全球市场的共同逻辑'
+  };
+
+  const prompt = `你是"骰评"——一个结构主义电影批评工具的解读引擎。你的任务是根据掷骰结果，生成一个有骰子签名感的观点，而非一篇面面俱到的评论。
+
+## 核心六规则（必须严格遵守）
+1. **第一句必须是不可替换的电影事实**：具体的场景、行为、物件——把电影名换成另一部电影，这句话就不成立。如果数据库中有spaces/motifs/chars，必须用它们作为锚点。
+2. **每句最多一个抽象概念**：先用电影事实铺底，再引出一个概念。连续堆叠多个理论术语是禁止的。
+3. **理论必须后置**：先用2-3句电影事实建立观察，理论只在后半段出场解释这个观察，不能一开始就甩术语。
+4. **骰子的主导词贯穿全文**：掷到"重复"，全文围绕重复；掷到"空间构建"，追踪导演如何构建空间。骰子的存在感必须明确——读者读完能知道今天骰子掷了什么。
+5. **收尾用问题不用总结**：不要"我们必须追问……"这种宏大收束。用一个具体的、带悬念的问题结尾：如果X本身也是Y，那Z究竟有没有真正逃离？
+6. **阅读模式决定追问方向**：Inside模式追问"电影内部怎么运作"；Around模式追问"为什么这部电影会出现、它满足什么文化需求"。
+
+## 掷骰结果
+分析对象: ${obj}
+${diceChain}
+
+${filmContext}${directorAnchor}${modeInstruction}
+${styleContext}
+
+## 输出要求
+- 生成一段250-400字的观点，不是一个面面俱到的影评
+- 核心观点围绕骰子的主导词展开，像一个手术刀切口
+- 按${profile.name}的论证弧线组织：${activeProfile.arc.join(' → ')}
+- 理论嵌入方式：${theoryInsertDesc[activeProfile.theoryInsert] || '理论逻辑隐含在分析中'}
+- 句式特征：${activeProfile.rhetoric.sentenceLen === 'long' ? '倒装长句为主' : activeProfile.rhetoric.sentenceLen === 'short' ? '短句叠加' : '长短句交替'}
+- 收尾方式：${closePatternDesc[activeProfile.closePattern] || '洞察收尾'}——但必须是一个问题，不是总结
+- 只输出观点文本本身，不加标题、不加标签、不加前缀`;
+
+  return prompt;
+}
+
+// --- API调用 ---
+async function callApiForInterpretation() {
+  // 递增请求序列号，用于丢弃过期响应
+  const thisSeq = ++_apiReqSeq;
+  const apiKey = document.getElementById('apiKeyInput').value.trim();
+  const provider = document.getElementById('apiProvider').value;
+  const model = document.getElementById('apiModel').value;
+
+  if (!apiKey && provider !== 'ollama') {
+    document.getElementById('shareCardReview').innerHTML = '<span style="color:var(--coral);">⚠ API Key 未配置。请在首页 ⚙ 设置中填入API Key，或切换回模板引擎。</span>';
+    buildShareCard(); // 退回到模板模式构建分享卡片
+    return;
+  }
+
+  const providerData = API_PROVIDERS[provider];
+  let endpoint = provider === 'custom'
+    ? document.getElementById('apiEndpoint').value.trim()
+    : providerData.endpoint;
+
+  if (!endpoint) {
+    document.getElementById('shareCardReview').innerHTML = '<span style="color:var(--coral);">⚠ 自定义 Endpoint 未填写。</span>';
+    return;
+  }
+
+  // 无需状态点，已改用引擎标识badge
+
+  const prompt = buildApiPrompt(currentDice, currentObject, currentStyle);
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: [
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.8,
+        max_tokens: 800
+      })
+    });
+
+    if (!response.ok) {
+      const errBody = await response.text();
+      throw new Error(`API返回错误 ${response.status}: ${errBody.substring(0, 200)}`);
+    }
+
+    const data = await response.json();
+    const text = data.choices?.[0]?.message?.content?.trim() || '';
+
+    if (!text) throw new Error('API返回空内容');
+
+    // 检查是否已被新的reroll覆盖
+    if (thisSeq !== _apiReqSeq) return;
+
+    apiInterpText = text;
+    // 将API文本渲染到评论区（保留理论词和崩塌词的高亮）
+    const styledText = highlightDiceWords(text, currentDice);
+    document.getElementById('shareCardReview').innerHTML = styledText;
+
+    // 完成后不需要更新状态点
+
+    // 更新分享卡片
+    buildShareCard();
+
+  } catch(err) {
+    console.error('API调用失败:', err);
+    // 失败时退回模板引擎——错误提示默认折叠，避免干扰阅读
+    const templateFilm = aiExtractedFilm || getFilmData(currentObject);
+    const templateText = generateInterpretation(currentDice, currentObject, templateFilm);
+    const safeMsg = (err.message || '未知错误').replace(/[<>]/g, '');
+    document.getElementById('shareCardReview').innerHTML =
+      `<details class="api-fallback-details"><summary>⚠ API引擎失败，已退回模板引擎（点击查看详情）</summary>` +
+      `<div class="api-fallback-msg">${safeMsg}</div></details>${templateText}`;
+    apiInterpText = '';
+    buildShareCard();
+  }
+}
+
+// --- 高亮骰子词 ---
+function highlightDiceWords(text, dice) {
+  let html = text;
+  // 高亮理论框架词（紫色）
+  if (dice.framework) {
+    html = html.replace(new RegExp(dice.framework, 'g'), `<span class="theory-word">${dice.framework}</span>`);
+  }
+  // 高亮崩塌词（珊瑚色）
+  if (dice.collapse) {
+    html = html.replace(new RegExp(dice.collapse, 'g'), `<span class="collapse-word">${dice.collapse}</span>`);
+  }
+  // 高亮其他骰子词
+  ['problem', 'mechanism', 'object', 'context'].forEach(key => {
+    if (dice[key]) {
+      html = html.replace(new RegExp(dice[key], 'g'), `<span class="theory-word">${dice[key]}</span>`);
+    }
+  });
+  return html;
+}
+
+// --- 修改分享文本生成（双引擎） ---
+function getShareText() {
+  let reviewText;
+  const templateFilm = aiExtractedFilm || getFilmData(currentObject);
+  if (engineMode === 'api' && apiInterpText) {
+    reviewText = apiInterpText;
+  } else {
+    const reviewHTML = generateInterpretation(currentDice, currentObject, templateFilm);
+    reviewText = reviewHTML.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+  }
+  const profile = STYLE_PROFILES[currentStyle];
+  const engineLabel = engineMode === 'api' ? 'AI' : '模板';
+  let sourceLabel = '';
+  if (filmDataSource === 'local') sourceLabel = '·本地数据';
+  else if (filmDataSource === 'ai') sourceLabel = '·AI提取';
+  const lines = DICE_ORDER.map(k => `${DICE[k].label}：${currentDice[k]}`);
+  return `${currentObject}\n\n【评论 · ${profile.tag} · ${engineLabel}引擎${sourceLabel}】\n${reviewText}\n\n【结构分析】\n${lines.join('\n')}\n\n置信度 ${currentConfidence}%\n\n🎲 骰评`;
+}
+
+// --- 修改分享卡片构建（双引擎） ---
+function buildShareCard() {
+  const cardObject = document.getElementById('shareCardObject');
+  const cardConfidence = document.getElementById('shareCardConfidence');
+  const cardStyle = document.getElementById('shareCardStyle');
+  const cardReview = document.getElementById('shareCardReview');
+  if (!cardObject || !cardConfidence || !cardStyle || !cardReview) {
+    console.warn('buildShareCard: 分享卡片DOM未就绪，跳过');
+    return;
+  }
+  cardObject.textContent = currentObject;
+  cardConfidence.textContent = currentConfidence;
+  cardStyle.textContent = STYLE_PROFILES[currentStyle].tag;
+
+  // 评论文本（双引擎）——用innerHTML保留高亮样式
+  let reviewText;
+  const templateFilm = aiExtractedFilm || getFilmData(currentObject);
+  if (engineMode === 'api' && apiInterpText) {
+    reviewText = apiInterpText;
+    cardReview.innerHTML = highlightDiceWords(reviewText, currentDice);
+  } else {
+    const reviewHTML = generateInterpretation(currentDice, currentObject, templateFilm);
+    reviewText = reviewHTML.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+    cardReview.textContent = reviewText;
+  }
+
+  // 引擎标识 + 数据来源水印
+  const engineLabel = engineMode === 'api' ? 'AI引擎' : '模板引擎';
+  let sourceLabel = '';
+  if (filmDataSource === 'local') sourceLabel = '本地数据';
+  else if (filmDataSource === 'ai') sourceLabel = 'AI提取';
+  const watermarkParts = ['🎲 骰评', STYLE_PROFILES[currentStyle].tag, engineLabel];
+  if (sourceLabel) watermarkParts.push(sourceLabel);
+  document.querySelector('#shareCard .share-card-watermark').innerHTML = watermarkParts.map(p => typeof p === 'string' ? p : p).join(' · ');
+
+  const chainEl = document.getElementById('shareCardChain');
+  chainEl.innerHTML = '';
+  for (let i = 0; i < DICE_ORDER.length; i++) {
+    const key = DICE_ORDER[i];
+    const node = document.createElement('div');
+    let nodeClass = 'share-card-node';
+    if (i === 0) nodeClass += ' first-node';
+    if (i === DICE_ORDER.length - 1) nodeClass += ' last-node';
+    node.className = nodeClass;
+    node.innerHTML = `<span class="node-label">${DICE[key].label}</span>${currentDice[key]}`;
+    chainEl.appendChild(node);
+    if (i < DICE_ORDER.length - 1) {
+      const arrow = document.createElement('div');
+      arrow.className = 'share-card-arrow';
+      arrow.textContent = '↓';
+      chainEl.appendChild(arrow);
+    }
+  }
+}
+
+// --- 初始化 ---
+loadApiConfig();
+</script>
+</body>
+</html>
