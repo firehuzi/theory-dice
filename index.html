@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>骰评 — 用理论掷骰，为电影算命。</title>
+<title>骰评 — 像随意观看一样去解读电影。</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="directors.js"></script>
 <style>
@@ -1150,6 +1150,31 @@ body {
 }
 .director-badge.hidden { display: none; }
 
+/* === Claim Line === */
+.claim-line {
+  font-family: var(--serif);
+  font-size: 0.8rem;
+  color: var(--text);
+  padding: 0.6rem 0 0.3rem 0;
+  max-width: 520px;
+  line-height: 1.5;
+  border-bottom: 1px dashed var(--light-accent);
+  margin-bottom: 1rem;
+  width: 100%;
+}
+.claim-line.hidden { display: none; }
+.claim-label {
+  font-family: var(--sans);
+  font-size: 0.65rem;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  margin-right: 0.3rem;
+}
+.claim-text {
+  font-style: italic;
+  color: var(--accent);
+}
+
 /* === Auto Extraction Row === */
 .auto-extraction-row {
   display: flex;
@@ -1178,7 +1203,7 @@ body {
 .caution-text {
   font-family: var(--sans);
   font-size: 0.68rem;
-  color: rgba(255,255,255,0.25);
+  color: rgba(0,0,0,0.35);
   text-align: center;
   margin-top: 0.6rem;
   line-height: 1.6;
@@ -1440,6 +1465,10 @@ body {
     <span class="api-engine-badge template" id="resultEngineBadge">模板</span>
     <span class="data-source-badge local" id="dataSourceBadge">本地数据</span>
     <span class="director-badge hidden" id="directorBadge"></span>
+  </div>
+  <div class="claim-line hidden" id="claimLine">
+    <span class="claim-label">命题：</span>
+    <span class="claim-text" id="claimText"></span>
   </div>
 
   <button class="reroll-btn" onclick="reroll()">🎲 再掷一次</button>
@@ -2712,6 +2741,8 @@ let apiInterpText = ''; // API返回的解读文本
 let aiExtractedFilm = null; // AI提取的电影结构数据（FILM_DB格式）
 let filmDataSource = 'local'; // 'local' | 'ai' | 'none'
 let currentDirector = null; // 当前电影识别的导演（DIRECTOR_DB条目，含所有字段）
+let currentClaimPool = []; // 观点池 [{claim, score, theory_fit, evidence}]
+let selectedClaim = null; // 当前选中的命题
 let _apiReqSeq = 0; // API请求序列号，防止旧请求覆盖新结果
 let _forcedReadingMode = null; // 'inside' | 'around' | null（自动）
 
@@ -2830,8 +2861,24 @@ async function startRoll() {
     filmDataSource = 'none';
   }
 
-  // === 第二步：掷骰（使用获取到的电影数据） ===
+  // === 第二步：命题发现（API模式 + 有电影数据时） ===
+  currentClaimPool = [];
+  selectedClaim = null;
+  if (engineMode === 'api' && film && (filmDataSource === 'local' || filmDataSource === 'ai')) {
+    const pool = await callApiForClaimPool(input, film);
+    if (pool && pool.length > 0) {
+      currentClaimPool = pool;
+      // 日志输出，开发者检查
+      console.log(`💡 命题池生成 ${pool.length} 条候选观点，TOP3:`);
+      pool.slice(0, 3).forEach((c, i) => console.log(`  ${i+1}. [${c.score}] ${c.claim.substring(0, 40)}...`));
+    }
+  }
+
+  // === 第三步：掷骰（使用获取到的电影数据） ===
   rollDice(film);
+  // 根据骰子结果从命题池选取最佳命题
+  selectedClaim = selectClaimByDice(currentClaimPool, currentDice);
+  if (selectedClaim) console.log(`🎯 选中命题：[${selectedClaim.score}] ${selectedClaim.claim.substring(0, 50)}`);
 
   // 切换界面
   document.getElementById('homeScreen').classList.add('hidden');
@@ -2945,6 +2992,18 @@ function showResult() {
     }
   }
 
+  // 命题展示
+  const claimLineEl = document.getElementById('claimLine');
+  const claimTextEl = document.getElementById('claimText');
+  if (claimLineEl && claimTextEl) {
+    if (selectedClaim) {
+      claimLineEl.className = 'claim-line';
+      claimTextEl.textContent = selectedClaim.claim;
+    } else {
+      claimLineEl.className = 'claim-line hidden';
+    }
+  }
+
   // 使用实际的电影数据（本地或AI提取）
   const film = aiExtractedFilm || getFilmData(currentObject);
 
@@ -3042,6 +3101,8 @@ function reroll() {
   // 再掷时使用已有的电影数据（本地或AI提取），不再重新提取
   const film = aiExtractedFilm || getFilmData(currentObject);
   rollDice(film);
+  // 再次从已有命题池中挑选（不重新生成池）
+  selectedClaim = selectClaimByDice(currentClaimPool, currentDice);
   document.getElementById('rollingScreen').classList.add('active');
   document.getElementById('objectDisplay').textContent = currentObject;
   document.getElementById('rollStatus').classList.remove('done');
@@ -3218,16 +3279,14 @@ const API_PROVIDERS = {
     name: 'Ollama（本地）',
     endpoint: 'http://localhost:11434/v1/chat/completions',
     models: [
+      { value: 'hermes3:8b', label: 'Hermes 3 8B' },
+      { value: 'qwen3:0.6b', label: 'Qwen3 0.6B' },
+      { value: 'gemma4:q5', label: 'Gemma 4 E2B Q5' },
       { value: 'qwen2.5:14b', label: 'Qwen2.5 14B' },
       { value: 'qwen2.5:7b', label: 'Qwen2.5 7B' },
-      { value: 'qwen2.5:72b', label: 'Qwen2.5 72B' },
       { value: 'deepseek-r1:14b', label: 'DeepSeek-R1 14B' },
-      { value: 'deepseek-r1:7b', label: 'DeepSeek-R1 7B' },
-      { value: 'llama3.2:3b', label: 'Llama 3.2 3B' },
       { value: 'llama3.1:8b', label: 'Llama 3.1 8B' },
       { value: 'mistral:7b', label: 'Mistral 7B' },
-      { value: 'mistral-nemo:12b', label: 'Mistral Nemo 12B' },
-      { value: 'gemma2:9b', label: 'Gemma 2 9B' },
       { value: 'phi4:14b', label: 'Phi-4 14B' }
     ]
   }
@@ -3569,6 +3628,119 @@ async function callApiForExtraction(movieName) {
   }
 }
 
+// ============================================================
+// === 命题发现引擎（Claim Pipeline） ===
+// ============================================================
+// 从电影结构数据生成候选观点池 → 评分 → 骰子选择 → 评论生成
+
+function buildClaimPoolPrompt(movieName, film) {
+  const allTheorists = Object.keys(AFFINITY);
+  const theoryContext = film && film.theoryFit
+    ? Object.entries(film.theoryFit).filter(([_,v]) => v >= 3).map(([k,v]) => `${k}(${v})`).join('、')
+    : '未知';
+
+  const themes = film && film.themes ? film.themes.join('、') : '未知';
+  const conflicts = film && film.conflicts ? film.conflicts.join('、') : '未知';
+  const spaces = film && film.spaces ? film.spaces.join('、') : '未知';
+  const motifs = film && film.motifs ? film.motifs.join('、') : '未知';
+
+  return `你是"骰评"的命题发现引擎（Claim Discovery Engine）。你的任务不是写评论，而是为电影《${movieName}》生成20个候选观点。
+
+## 电影结构数据
+核心主题：${themes}
+核心冲突：${conflicts}
+核心空间：${spaces}
+关键意象：${motifs}
+理论适配：${theoryContext}
+
+## 每个观点需要包含5个字段
+{
+  "id": 1-20的编号,
+  "claim": "一句话观点（必须是不可替换的，换一部电影就不成立）",
+  "score": 1-100的整数（综合评分，越高越好）,
+  "theory_fit": ["最适合解释这个观点的理论家1", "理论家2", "理论家3"],
+  "evidence": ["电影中支持该观点的证据1", "证据2", "证据3"]
+}
+
+## 评分标准（共4项，每项最高25分）
+1. 不可替换性（0-25）：把电影名换成另一部，这句话还能成立吗？成立则低分
+2. 可论证性（0-25）：电影里有没有至少3个具体场景/细节/对话支持这个观点
+3. 生成性（0-25）：这个观点会不会催生更多问题，还是第一句话就结束了
+4. 理论适配度（0-25）：是否至少有一个理论家能自然地解释这个观点，而不是硬贴标签
+
+## 观点质量要求
+- 观点必须有矛盾空间，不是安全的陈述
+- 观点最好是一个张力（如"反抗VS新纪律""真实赛车VS景观赛车"），但不强制
+- 避免 "体现了消费社会" 这种万用句式——不可替换性得分会极低
+- 至少80%的观点应该直接引用电影中具体的人物、场景、物件或对话
+
+## 输出格式
+只输出一个JSON数组，包含20个对象。不要加任何其他内容。
+[]`; }
+
+async function callApiForClaimPool(movieName, film) {
+  const apiKey = document.getElementById('apiKeyInput').value.trim();
+  const provider = document.getElementById('apiProvider').value;
+  const model = document.getElementById('apiModel').value;
+  if (!apiKey && provider !== 'ollama') return null;
+
+  const providerData = API_PROVIDERS[provider];
+  let endpoint = provider === 'custom'
+    ? document.getElementById('apiEndpoint').value.trim()
+    : providerData.endpoint;
+  if (!endpoint) return null;
+
+  const prompt = buildClaimPoolPrompt(movieName, film);
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.7,
+        max_tokens: 2000
+      })
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    const text = data.choices?.[0]?.message?.content?.trim() || '';
+    if (!text) return null;
+
+    let jsonStr = text.replace(/^```json\s*/, '').replace(/^```\s*/, '').replace(/\s*```$/, '').trim();
+    const claims = JSON.parse(jsonStr);
+    if (!Array.isArray(claims) || claims.length === 0) return null;
+    return claims;
+  } catch(err) {
+    console.error('命题发现API调用失败:', err);
+    return null;
+  }
+}
+
+function selectClaimByDice(claims, dice) {
+  if (!claims || claims.length === 0) return null;
+  // 理论框架匹配：选与框架理论家匹配度最高的观点
+  const fw = dice && dice.framework;
+  if (fw) {
+    const scored = claims.map(c => {
+      let matchScore = 0;
+      if (c.theory_fit && Array.isArray(c.theory_fit)) {
+        matchScore = c.theory_fit.includes(fw) ? 25 : c.theory_fit.some(t => t.includes(fw) || fw.includes(t)) ? 10 : 0;
+      }
+      // 综合：理论匹配 + 原始评分
+      return { claim: c, final: (c.score || 50) + matchScore };
+    });
+    scored.sort((a, b) => b.final - a.final);
+    return scored[0].claim;
+  }
+  // 无理论框架时取评分第一
+  return claims.sort((a, b) => (b.score || 0) - (a.score || 0))[0];
+}
+
 // --- 获取电影数据（本地 + sessionStorage + AI fallback） ---
 function getFilmDataWithCache(input) {
   // 1. 本地FILM_DB
@@ -3700,28 +3872,58 @@ function buildApiPrompt(d, obj, styleKey) {
     'globalBridge': '全球桥梁收尾——指出跨国资本/全球市场的共同逻辑'
   };
 
-  const prompt = `你是"骰评"——一个结构主义电影批评工具的解读引擎。你的任务是根据掷骰结果，生成一个有骰子签名感的观点，而非一篇面面俱到的评论。
+  // 命题锚点
+  let claimAnchor = '';
+  if (selectedClaim) {
+    claimAnchor = `\n\n## 命题
+你要证明的是以下这个观点——它是由系统的命题发现引擎筛选出来的：
+📌 ${selectedClaim.claim}
+${selectedClaim.evidence ? `\n【建议的证据方向】\n${selectedClaim.evidence.map((e, i) => `  ${i+1}. ${e}`).join('\n')}` : ''}`;
+  }
 
-## 核心六规则（必须严格遵守）
-1. **第一句必须是不可替换的电影事实**：具体的场景、行为、物件——把电影名换成另一部电影，这句话就不成立。如果数据库中有spaces/motifs/chars，必须用它们作为锚点。
-2. **每句最多一个抽象概念**：先用电影事实铺底，再引出一个概念。连续堆叠多个理论术语是禁止的。
-3. **理论必须后置**：先用2-3句电影事实建立观察，理论只在后半段出场解释这个观察，不能一开始就甩术语。
-4. **骰子的主导词贯穿全文**：掷到"重复"，全文围绕重复；掷到"空间构建"，追踪导演如何构建空间。骰子的存在感必须明确——读者读完能知道今天骰子掷了什么。
-5. **收尾用问题不用总结**：不要"我们必须追问……"这种宏大收束。用一个具体的、带悬念的问题结尾：如果X本身也是Y，那Z究竟有没有真正逃离？
-6. **阅读模式决定追问方向**：Inside模式追问"电影内部怎么运作"；Around模式追问"为什么这部电影会出现、它满足什么文化需求"。
+  const prompt = `你是"骰评"——一个结构主义电影批评工具。你的任务不是写评论，而是**论证一个命题**。
 
-## 掷骰结果
+## 核心任务
+用电影事实证明下面的命题。您的写作应该让读者觉得：看完你的论证，这个命题变得越来越可信——而不是一开始就接受它。
+
+## 写作结构（每段只做一个任务，不要混）
+---
+第一段：观察
+只做一件事：描述电影中支持命题的一个具体事实。
+- 必须是一个不可替换的细节（场景/角色/对话/物件）
+- 不要解释它为什么重要，只描写它
+- 不要出现理论词
+
+第二段：论证
+只做一件事：解释这个事实为什么支持命题。
+- 只能出现一个抽象概念
+- 可以使用骰子中的一个词作为分析工具
+
+第三段：「反证」
+只做一件事：提出一个可能的反对意见，然后解释为什么它不成立。
+- 格式："有人会说……但真正的问题是……"
+
+第四段：理论锚点
+只做一件事：用骰子提供的理论框架来解释命题的深层结构。
+- 骰子词最多出现两个（框架词 + 一个其他词）
+- 不要堆理论
+
+第五段：追问
+只做一件事：留下一个开放问题。
+- 不能用总结句结尾
+- 问题必须有悬念——让人想继续想下去
+
+## 骰子结果（提供分析工具，不是写作素材）
 分析对象: ${obj}
 ${diceChain}
 
-${filmContext}${directorAnchor}${modeInstruction}
+${filmContext}${directorAnchor}${claimAnchor}${modeInstruction}
 ${styleContext}
 
 ## 输出要求
-- 生成一段250-400字的观点，不是一个面面俱到的影评
-- 核心观点围绕骰子的主导词展开，像一个手术刀切口
+- 生成一段250-400字的论证，不是面面俱到的影评
+- 按上面5个段落依次写，不要合并段落
 - 按${profile.name}的论证弧线组织：${activeProfile.arc.join(' → ')}
-- 理论嵌入方式：${theoryInsertDesc[activeProfile.theoryInsert] || '理论逻辑隐含在分析中'}
 - 句式特征：${activeProfile.rhetoric.sentenceLen === 'long' ? '倒装长句为主' : activeProfile.rhetoric.sentenceLen === 'short' ? '短句叠加' : '长短句交替'}
 - 收尾方式：${closePatternDesc[activeProfile.closePattern] || '洞察收尾'}——但必须是一个问题，不是总结
 - 只输出观点文本本身，不加标题、不加标签、不加前缀`;
@@ -3935,6 +4137,7 @@ function saveRollToHistory() {
         : Object.values(currentDiceRegisters).filter(r => r === 'around').length >= 1 ? 'mixed' : 'inside')
       : 'inside',
     director: currentDirector ? { key: currentDirector.key } : null,
+    selectedClaim: selectedClaim ? { claim: selectedClaim.claim } : null,
     createdAt: new Date().toISOString()
   };
   // 去重：同一电影+相同骰子组合不重复记录
@@ -4016,6 +4219,18 @@ function loadHistory(id) {
       directorBadgeEl.textContent = '🎬 ' + entry.director.key;
     } else {
       directorBadgeEl.className = 'director-badge hidden';
+    }
+  }
+  // 命题复原
+  const claimLineEl = document.getElementById('claimLine');
+  const claimTextEl = document.getElementById('claimText');
+  const storedClaim = entry.selectedClaim || null;
+  if (claimLineEl && claimTextEl) {
+    if (storedClaim) {
+      claimLineEl.className = 'claim-line';
+      claimTextEl.textContent = storedClaim.claim;
+    } else {
+      claimLineEl.className = 'claim-line hidden';
     }
   }
   // 数据来源
