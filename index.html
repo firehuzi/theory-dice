@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>骰评 — 像随意观看一样去解读电影。</title>
+<title>骰评 · 私人电影思想地图 — Every Film is a Landscape of Ideas.</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="directors.js"></script>
 <style>
@@ -1175,6 +1175,75 @@ body {
   color: var(--accent);
 }
 
+/* === Structural Field === */
+.field-section {
+  margin-top: 0.5rem;
+  padding: 0.6rem 0.8rem;
+  border-left: 3px solid var(--accent);
+  background: rgba(107,75,154,0.04);
+  border-radius: 0 4px 4px 0;
+  max-width: 520px;
+  width: 100%;
+}
+.field-section.hidden { display: none; }
+.field-label {
+  font-family: var(--sans);
+  font-size: 0.6rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.5rem;
+}
+.field-master {
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid rgba(107,75,154,0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.field-master-label {
+  font-family: var(--sans);
+  font-size: 0.55rem;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.field-master-text {
+  font-family: var(--serif);
+  font-size: 0.82rem;
+  color: var(--text);
+  font-weight: 500;
+  line-height: 1.4;
+}
+.field-axis {
+  margin-bottom: 0.3rem;
+  padding: 0.25rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.field-axis-type {
+  font-family: var(--sans);
+  font-size: 0.55rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.1rem;
+}
+.field-arrow {
+  font-family: var(--sans);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.field-center {
+  font-family: var(--serif);
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
 /* === Auto Extraction Row === */
 .auto-extraction-row {
   display: flex;
@@ -1353,7 +1422,7 @@ body {
     <span class="api-config-text">引擎配置</span>
   </button>
   <div class="brand">骰评</div>
-  <div class="brand-sub">用理论掷骰，为电影算命。</div>
+  <div class="brand-sub">私人电影思想地图</div>
   <div class="input-area">
     <div class="input-label">电影</div>
     <input class="input-field" id="objectInput" type="text" placeholder="《寄生虫》" autofocus />
@@ -1462,13 +1531,17 @@ body {
     <span class="structure-badge hidden" id="structureBadge">🔥 结构增强</span>
     <span class="reading-mode-badge inside" id="readingModeBadge">Inside</span>
     <span class="style-tag" id="styleTag"></span>
-    <span class="api-engine-badge template" id="resultEngineBadge">模板</span>
-    <span class="data-source-badge local" id="dataSourceBadge">本地数据</span>
+    <span class="api-engine-badge template hidden" id="resultEngineBadge">模板</span>
+    <span class="data-source-badge local hidden" id="dataSourceBadge">本地数据</span>
     <span class="director-badge hidden" id="directorBadge"></span>
   </div>
   <div class="claim-line hidden" id="claimLine">
     <span class="claim-label">命题：</span>
     <span class="claim-text" id="claimText"></span>
+  </div>
+
+  <div class="field-section hidden" id="fieldContainer">
+    <!-- 动态由 renderFieldOnResult 填充 -->
   </div>
 
   <button class="reroll-btn" onclick="reroll()">🎲 再掷一次</button>
@@ -1477,18 +1550,19 @@ body {
   <div class="share-card-section">
     <div class="share-card" id="shareCard">
       <div class="share-card-brand">骰评</div>
-      <div class="share-card-sub">像随意观看一样去解读电影。</div>
+      <div class="share-card-sub">Every Film is a Landscape of Ideas.</div>
       <div class="share-card-object" id="shareCardObject"></div>
-      <div class="share-card-review-label">评论</div>
+      <div class="share-card-field" id="shareCardField"></div>
+      <div class="share-card-claim" id="shareCardClaim"></div>
       <div class="share-card-review" id="shareCardReview"></div>
-      <div class="share-card-analysis-label">结构分析</div>
-      <div class="share-card-chain" id="shareCardChain"></div>
-      <div class="share-card-confidence">
+      <div class="share-card-dice" id="shareCardDice"></div>
+      <div class="share-card-footer">
         <span class="cf-label">置信度</span>
         <span class="cf-value" id="shareCardConfidence"></span>
         <span class="cf-unit">%</span>
+        <span class="sc-sep">·</span>
+        <span class="sc-style" id="shareCardStyle"></span>
       </div>
-      <div class="share-card-watermark">🎲 骰评 · <span id="shareCardStyle"></span></div>
       <div class="share-card-disclaimer">当模式比观察更重要时，解读就沦为套路。让骰子帮你越狱。</div>
     </div>
   </div>
@@ -2743,6 +2817,7 @@ let filmDataSource = 'local'; // 'local' | 'ai' | 'none'
 let currentDirector = null; // 当前电影识别的导演（DIRECTOR_DB条目，含所有字段）
 let currentClaimPool = []; // 观点池 [{claim, score, theory_fit, evidence}]
 let selectedClaim = null; // 当前选中的命题
+let currentField = null; // 结构场 [{polarity, center, sub_questions}]
 let _apiReqSeq = 0; // API请求序列号，防止旧请求覆盖新结果
 let _forcedReadingMode = null; // 'inside' | 'around' | null（自动）
 
@@ -2861,22 +2936,32 @@ async function startRoll() {
     filmDataSource = 'none';
   }
 
-  // === 第二步：命题发现（API模式 + 有电影数据时） ===
+  // === 第二步：掷骰（在命题池之前，骰子决定分析框架） ===
+  rollDice(film);
+
+  // === 第三步：结构场发现（API模式 + 有电影数据时，带入框架理论家） ===
+  currentField = null;
+  if (engineMode === 'api' && film && (filmDataSource === 'local' || filmDataSource === 'ai')) {
+    const field = await callApiForField(input, film, currentDice.framework);
+    if (field && field.master) {
+      currentField = field;
+      console.log(`📐 结构场发现(${currentDice.framework}): ${field.master.substring(0, 30)}...`);
+    }
+  }
+
+  // === 第四步：命题发现（API模式，生成框架限定的命题池） ===
   currentClaimPool = [];
   selectedClaim = null;
   if (engineMode === 'api' && film && (filmDataSource === 'local' || filmDataSource === 'ai')) {
-    const pool = await callApiForClaimPool(input, film);
+    const pool = await callApiForClaimPool(input, film, currentDice.framework);
     if (pool && pool.length > 0) {
       currentClaimPool = pool;
-      // 日志输出，开发者检查
-      console.log(`💡 命题池生成 ${pool.length} 条候选观点，TOP3:`);
+      console.log(`💡 命题池(${currentDice.framework}) ${pool.length} 条`);
       pool.slice(0, 3).forEach((c, i) => console.log(`  ${i+1}. [${c.score}] ${c.claim.substring(0, 40)}...`));
     }
   }
 
-  // === 第三步：掷骰（使用获取到的电影数据） ===
-  rollDice(film);
-  // 根据骰子结果从命题池选取最佳命题
+  // 从命题池选取最佳命题
   selectedClaim = selectClaimByDice(currentClaimPool, currentDice);
   if (selectedClaim) console.log(`🎯 选中命题：[${selectedClaim.score}] ${selectedClaim.claim.substring(0, 50)}`);
 
@@ -2954,15 +3039,7 @@ function showResult() {
 
   // 引擎标识
   const engineBadgeEl = document.getElementById('resultEngineBadge');
-  if (engineBadgeEl) {
-    if (engineMode === 'api') {
-      engineBadgeEl.className = 'api-engine-badge api';
-      engineBadgeEl.textContent = 'AI';
-    } else {
-      engineBadgeEl.className = 'api-engine-badge template';
-      engineBadgeEl.textContent = '模板';
-    }
-  }
+  if (engineBadgeEl) { engineBadgeEl.className = 'api-engine-badge api hidden'; }
 
   // 数据来源标识
   const dataSourceEl = document.getElementById('dataSourceBadge');
@@ -3017,7 +3094,8 @@ function showResult() {
 
   // 构建链式图（标注 register + 追问）——写在分享卡片的链区
   const chainEl = document.getElementById('shareCardChain');
-  chainEl.innerHTML = '';
+  if (chainEl) {
+    chainEl.innerHTML = '';
   // 追问映射——每颗骰子的词→一个追问方向
   const chainQuestions = {
     framework:  (w) => `${w}会怎么看？`,
@@ -3048,6 +3126,7 @@ function showResult() {
       arrow.innerHTML = `<span class="chain-question">${question}</span>`;
       chainEl.appendChild(arrow);
     }
+  }
   }
 
   // 阅读模式徽章
@@ -3086,8 +3165,11 @@ function showResult() {
     document.getElementById('shareCardReview').innerHTML = generateInterpretation(currentDice, currentObject, templateFilm);
   }
 
-  // 构建分享卡片（API引擎在API返回后更新评论文本，但先更新骰子链和置信度）
+  // 构建分享卡片
   buildShareCard();
+
+  // 渲染结构场
+  renderFieldOnResult();
 
   // 重置揭示
   document.getElementById('revealText').classList.remove('visible');
@@ -3095,14 +3177,33 @@ function showResult() {
 
 // buildShareCard() 已移至API引擎系统区域（双引擎版本）
 
-function reroll() {
+async function reroll() {
   document.getElementById('resultScreen').classList.remove('active');
-  currentStyle = randStyle(); // 重新随机风格
-  // 再掷时使用已有的电影数据（本地或AI提取），不再重新提取
+  currentStyle = randStyle();
   const film = aiExtractedFilm || getFilmData(currentObject);
   rollDice(film);
-  // 再次从已有命题池中挑选（不重新生成池）
-  selectedClaim = selectClaimByDice(currentClaimPool, currentDice);
+
+  // 骰子变了，重新生成框架特定的结构场和命题池
+  if (engineMode === 'api' && film && (filmDataSource === 'local' || filmDataSource === 'ai')) {
+    const apiFrame = currentDice.framework;
+    try {
+      const [f, p] = await Promise.all([
+        callApiForField(currentObject, film, apiFrame),
+        callApiForClaimPool(currentObject, film, apiFrame)
+      ]);
+      if (f && f.master) { currentField = f; console.log('📐 reroll场:', f.master.substring(0,30)); }
+      if (p && p.length > 0) {
+        currentClaimPool = p;
+        selectedClaim = selectClaimByDice(p, currentDice);
+        console.log('💡 reroll池:', p.length, '条, 选中:', selectedClaim ? selectedClaim.claim.substring(0,40) : 'null');
+      }
+    } catch(err) {
+      console.error('reroll 场/池生成失败:', err);
+      selectedClaim = selectClaimByDice(currentClaimPool, currentDice);
+    }
+  } else {
+    selectedClaim = selectClaimByDice(currentClaimPool, currentDice);
+  }
   document.getElementById('rollingScreen').classList.add('active');
   document.getElementById('objectDisplay').textContent = currentObject;
   document.getElementById('rollStatus').classList.remove('done');
@@ -3187,26 +3288,23 @@ function fallbackSaveCard() {
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 body { background: #FAFAF8; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 2rem; }
-.share-card { background: #FAFAF8; border: 2px solid #533483; border-radius: 16px; padding: 2rem 2.5rem; width: 420px; position: relative; overflow: hidden; }
-.share-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 6px; background: linear-gradient(90deg, #533483, #E94560); }
-.share-card-brand { font-family: 'Noto Serif SC', serif; font-size: 1.6rem; font-weight: 700; color: #533483; letter-spacing: 0.1em; margin-bottom: 0.1rem; }
-.share-card-sub { font-family: 'Noto Sans SC', sans-serif; font-size: 0.65rem; color: #888; margin-bottom: 1.2rem; }
-.share-card-object { font-family: 'Noto Serif SC', serif; font-size: 1.4rem; font-weight: 700; color: #1A1A1A; text-align: center; margin-bottom: 1rem; padding-bottom: 0.6rem; border-bottom: 1px dashed #E8DFF5; }
-.share-card-chain { display: flex; flex-direction: column; align-items: center; gap: 0; margin-bottom: 0.8rem; }
-.share-card-node { display: flex; align-items: center; gap: 0.5rem; font-family: 'Noto Serif SC', serif; font-size: 0.95rem; font-weight: 600; color: #1A1A1A; padding: 0.2rem 0; }
-.share-card-node .node-label { font-family: 'Noto Sans SC', sans-serif; font-size: 0.6rem; color: #888; min-width: 60px; }
-.share-card-node.first-node { color: #533483; }
-.share-card-node.last-node { color: #E94560; font-weight: 700; }
-.share-card-arrow { color: #888; font-size: 0.8rem; line-height: 1; }
-.share-card-confidence { display: flex; justify-content: center; align-items: center; gap: 0.4rem; margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px dashed #E8DFF5; }
-.share-card-confidence .cf-label { font-family: 'Noto Sans SC', sans-serif; font-size: 0.7rem; color: #888; }
-.share-card-confidence .cf-value { font-family: 'Noto Sans SC', sans-serif; font-size: 1.2rem; font-weight: 700; color: #E94560; }
-.share-card-confidence .cf-unit { font-family: 'Noto Sans SC', sans-serif; font-size: 0.7rem; color: #888; }
-.share-card-watermark { font-family: 'Noto Sans SC', sans-serif; font-size: 0.6rem; color: #888; text-align: center; margin-top: 0.8rem; opacity: 0.5; }
-.share-card-review-label { font-family: 'Noto Sans SC', sans-serif; font-size: 0.7rem; color: #888; border-bottom: 1px solid #E8DFF5; padding-bottom: 0.3rem; margin-bottom: 0.5rem; }
-.share-card-review { font-family: 'Noto Serif SC', serif; font-size: 0.85rem; line-height: 1.6; color: #1A1A1A; margin-bottom: 1rem; }
-.share-card-analysis-label { font-family: 'Noto Sans SC', sans-serif; font-size: 0.7rem; color: #888; border-bottom: 1px solid #E8DFF5; padding-bottom: 0.3rem; margin-bottom: 0.5rem; }
-.share-card-disclaimer { font-family: 'Noto Serif SC', serif; font-size: 0.75rem; color: #888; text-align: center; margin-top: 0.6rem; line-height: 1.6; letter-spacing: 0.02em; opacity: 0.7; }
+.share-card { background: #FAFAF8; border: 2px solid #533483; border-radius: 16px; padding: 1.8rem 2.4rem; width: 420px; position: relative; overflow: hidden; }
+.share-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 5px; background: linear-gradient(90deg, #533483, #E94560); }
+.share-card-brand { font-family: 'Noto Serif SC', serif; font-size: 1.2rem; font-weight: 700; color: #533483; letter-spacing: 0.12em; margin-bottom: 0.1rem; }
+.share-card-sub { font-family: 'Noto Serif SC', serif; font-size: 0.6rem; color: #999; margin-bottom: 0.8rem; letter-spacing: 0.02em; font-style: italic; }
+.share-card-object { font-family: 'Noto Serif SC', serif; font-size: 1.3rem; font-weight: 700; color: #1A1A1A; margin-bottom: 0.6rem; }
+.share-card-field { font-family: 'Noto Sans SC', sans-serif; font-size: 0.68rem; padding: 0.4rem 0.6rem; margin-bottom: 0.8rem; border-left: 3px solid #533483; color: #533483; line-height: 1.4; }
+.share-card-field .sf-master { font-weight: 600; display: block; }
+.share-card-field .sf-axes { display: none; }
+.share-card-claim { font-family: 'Noto Serif SC', serif; font-size: 0.82rem; font-style: italic; color: #533483; text-align: center; margin-bottom: 0.8rem; border-bottom: 1px dashed #E8DFF5; padding-bottom: 0.5rem; }
+.share-card-review { font-family: 'Noto Serif SC', serif; font-size: 0.82rem; line-height: 1.7; color: #1A1A1A; margin-bottom: 0.8rem; }
+.share-card-dice { font-family: 'Noto Sans SC', sans-serif; font-size: 0.58rem; color: #888; text-align: center; margin-bottom: 0.6rem; line-height: 1.6; }
+.share-card-dice .sc-fw { color: #533483; font-weight: 600; }
+.share-card-dice .sc-collapse { color: #E94560; font-weight: 600; }
+.share-card-footer { display: flex; justify-content: center; align-items: center; gap: 0.4rem; padding-top: 0.5rem; border-top: 1px dashed #E8DFF5; font-family: 'Noto Sans SC', sans-serif; font-size: 0.65rem; color: #888; }
+.share-card-footer .cf-value { font-weight: 700; color: #E94560; font-size: 0.85rem; }
+.share-card-footer .sc-sep { color: #CCC; }
+.share-card-disclaimer { font-family: 'Noto Serif SC', serif; font-size: 0.7rem; color: #888; text-align: center; margin-top: 0.4rem; line-height: 1.5; letter-spacing: 0.02em; opacity: 0.6; }
 </style>
 </head>
 <body>
@@ -3633,8 +3731,8 @@ async function callApiForExtraction(movieName) {
 // ============================================================
 // 从电影结构数据生成候选观点池 → 评分 → 骰子选择 → 评论生成
 
-function buildClaimPoolPrompt(movieName, film) {
-  const allTheorists = Object.keys(AFFINITY);
+function buildClaimPoolPrompt(movieName, film, framework) {
+  const fw = framework || '未知';
   const theoryContext = film && film.theoryFit
     ? Object.entries(film.theoryFit).filter(([_,v]) => v >= 3).map(([k,v]) => `${k}(${v})`).join('、')
     : '未知';
@@ -3644,7 +3742,7 @@ function buildClaimPoolPrompt(movieName, film) {
   const spaces = film && film.spaces ? film.spaces.join('、') : '未知';
   const motifs = film && film.motifs ? film.motifs.join('、') : '未知';
 
-  return `你是"骰评"的命题发现引擎（Claim Discovery Engine）。你的任务不是写评论，而是为电影《${movieName}》生成20个候选观点。
+  return `你是"骰评"的命题发现引擎。你正在以**${fw}的理论视角**为电影《${movieName}》生成 8 个候选观点。
 
 ## 电影结构数据
 核心主题：${themes}
@@ -3652,10 +3750,11 @@ function buildClaimPoolPrompt(movieName, film) {
 核心空间：${spaces}
 关键意象：${motifs}
 理论适配：${theoryContext}
+## 当前框架：${fw}
 
-## 每个观点需要包含5个字段
+## 命题发现要求（8个）
 {
-  "id": 1-20的编号,
+  "id": 1-8的编号,
   "claim": "一句话观点（必须是不可替换的，换一部电影就不成立）",
   "score": 1-100的整数（综合评分，越高越好）,
   "theory_fit": ["最适合解释这个观点的理论家1", "理论家2", "理论家3"],
@@ -3671,14 +3770,15 @@ function buildClaimPoolPrompt(movieName, film) {
 ## 观点质量要求
 - 观点必须有矛盾空间，不是安全的陈述
 - 观点最好是一个张力（如"反抗VS新纪律""真实赛车VS景观赛车"），但不强制
+- 所有观点都必须出自 ${fw} 的理论视角——不能用别家的术语代替
 - 避免 "体现了消费社会" 这种万用句式——不可替换性得分会极低
 - 至少80%的观点应该直接引用电影中具体的人物、场景、物件或对话
 
 ## 输出格式
-只输出一个JSON数组，包含20个对象。不要加任何其他内容。
+只输出一个JSON数组，包含8个对象。不要加任何其他内容。
 []`; }
 
-async function callApiForClaimPool(movieName, film) {
+async function callApiForClaimPool(movieName, film, framework) {
   const apiKey = document.getElementById('apiKeyInput').value.trim();
   const provider = document.getElementById('apiProvider').value;
   const model = document.getElementById('apiModel').value;
@@ -3690,7 +3790,7 @@ async function callApiForClaimPool(movieName, film) {
     : providerData.endpoint;
   if (!endpoint) return null;
 
-  const prompt = buildClaimPoolPrompt(movieName, film);
+  const prompt = buildClaimPoolPrompt(movieName, film, framework);
 
   try {
     const response = await fetch(endpoint, {
@@ -3723,22 +3823,134 @@ async function callApiForClaimPool(movieName, film) {
 
 function selectClaimByDice(claims, dice) {
   if (!claims || claims.length === 0) return null;
-  // 理论框架匹配：选与框架理论家匹配度最高的观点
-  const fw = dice && dice.framework;
-  if (fw) {
-    const scored = claims.map(c => {
-      let matchScore = 0;
+  if (!dice) return claims.sort((a, b) => (b.score || 0) - (a.score || 0))[0];
+
+  // 骰子维度的关键词权重表
+  const dimWeights = {
+    framework: 25,
+    problem: 15,
+    collapse: 12,
+    mechanism: 10,
+    object: 8,
+    director_signature: 8,
+    context: 6
+  };
+
+  const scored = claims.map(c => {
+    let bonus = 0;
+    const text = (c.claim || '') + ' ' + (c.evidence || []).join(' ');
+
+    // framework 匹配（理论家名称或包含关系）
+    const fw = dice.framework;
+    if (fw) {
       if (c.theory_fit && Array.isArray(c.theory_fit)) {
-        matchScore = c.theory_fit.includes(fw) ? 25 : c.theory_fit.some(t => t.includes(fw) || fw.includes(t)) ? 10 : 0;
+        bonus += c.theory_fit.some(t => t === fw || t.includes(fw) || fw.includes(t)) ? dimWeights.framework : 0;
       }
-      // 综合：理论匹配 + 原始评分
-      return { claim: c, final: (c.score || 50) + matchScore };
+    }
+
+    // 其余维度：关键词在命题文本中出现则加分
+    ['problem','collapse','mechanism','object','director_signature','context'].forEach(dim => {
+      const val = dice[dim];
+      if (val && text.includes(val)) bonus += dimWeights[dim] || 6;
     });
-    scored.sort((a, b) => b.final - a.final);
-    return scored[0].claim;
+
+    return { claim: c, final: (c.score || 50) + bonus };
+  });
+
+  scored.sort((a, b) => b.final - a.final);
+  console.log('🎲 命题筛选:', scored.slice(0,3).map(s => `[${s.final}] ${s.claim.claim.substring(0,30)}...`).join(' | '));
+  return scored[0].claim;
+}
+
+// ============================================================
+// === 结构场发现引擎（Structural Field Pipeline） ===
+// ============================================================
+
+function buildFieldPrompt(movieName, film, framework) {
+  const themes = film && film.themes ? film.themes.join('、') : '未知';
+  const conflicts = film && film.conflicts ? film.conflicts.join('、') : '未知';
+  const fw = framework || 'unknown';
+
+  return `你是 ConStruct Lab 的入口地图引擎。你以一${fw}的理论视角分析电影。
+
+电影：《${movieName}》
+核心主题：${themes}
+核心冲突：${conflicts}
+
+## 任务
+第一步：判断这部电影属于哪种**结构宇宙**。从以下类型中选择最匹配的一种：
+人格结构 / 空间结构 / 时间结构 / 权力结构 / 身体结构 / 技术结构 / 欲望结构 / 意识结构 / 叙事结构 / 资源结构 / 神话结构
+
+第二步：基于这个结构宇宙，生成一组**入口节点（Entry Nodes）**——5-7个按递进关系排列的具体元素（场景/物件/人物/行为），形成一条从表面到核心的进入路径。
+
+第三步：给每个入口节点写一句 center 说明。
+
+格式（纯JSON对象）：
+{
+  "structure_type": "人格结构",
+  "master": "一句话——这个结构宇宙下最核心的结构规则",
+  "nodes": [
+    { "entry": "具象元素", "center": "一句话说明" },
+    ...
+  ]
+}
+
+规则：
+- 结构类型是第一步的判断结果，不要默认填"空间结构"
+- 入口节点不是极性（A←→B），而是递进链（节点1→节点2→节点3→...）
+- 每个entry必须是电影中真实存在的具体元素（场景/物件/角色/行为）
+- 不要生成空间/关系/符号/行动四个固定轴——根据电影的真实结构来
+
+{}`;
+}
+
+async function callApiForField(movieName, film, framework) {
+  const apiKey = document.getElementById('apiKeyInput').value.trim();
+  const provider = document.getElementById('apiProvider').value;
+  const model = document.getElementById('apiModel').value;
+  if (!apiKey && provider !== 'ollama') return null;
+
+  const providerData = API_PROVIDERS[provider];
+  let endpoint = provider === 'custom'
+    ? document.getElementById('apiEndpoint').value.trim()
+    : providerData.endpoint;
+  if (!endpoint) return null;
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({ model, messages: [{ role: 'user', content: buildFieldPrompt(movieName, film, framework) }], temperature: 0.5, max_tokens: 800 })
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    const text = data.choices?.[0]?.message?.content?.trim() || '';
+    if (!text) return null;
+    let jsonStr = text.replace(/^```json\s*/, '').replace(/^```\s*/, '').replace(/\s*```$/, '').trim();
+    return JSON.parse(jsonStr);
+  } catch(err) { console.error('结构场API调用失败:', err); return null; }
+}
+
+function renderFieldOnResult() {
+  const container = document.getElementById('fieldContainer');
+  if (!container) return;
+  if (!currentField || !currentField.master) {
+    container.className = 'field-section hidden'; return;
   }
-  // 无理论框架时取评分第一
-  return claims.sort((a, b) => (b.score || 0) - (a.score || 0))[0];
+  container.className = 'field-section';
+  const stype = currentField.structure_type || '结构场';
+  const nodesHtml = (currentField.nodes || currentField.axes || []).map(n =>
+    `<div class="field-axis">
+      <span class="field-axis-type">${n.entry || n.polarity || ''}</span>
+      <span class="field-center">${n.center || ''}</span>
+    </div>`
+  ).join('');
+  container.innerHTML =
+    `<div class="field-label">入口地图 · ${stype}</div>
+    <div class="field-master">
+      <span class="field-master-text">${currentField.master}</span>
+    </div>
+    ${nodesHtml}`;
 }
 
 // --- 获取电影数据（本地 + sessionStorage + AI fallback） ---
@@ -3884,34 +4096,19 @@ ${selectedClaim.evidence ? `\n【建议的证据方向】\n${selectedClaim.evide
   const prompt = `你是"骰评"——一个结构主义电影批评工具。你的任务不是写评论，而是**论证一个命题**。
 
 ## 核心任务
-用电影事实证明下面的命题。您的写作应该让读者觉得：看完你的论证，这个命题变得越来越可信——而不是一开始就接受它。
+用电影事实证明下面的命题。你的写作应该让读者觉得：看完你的论证，这个命题变得越来越可信——而不是一开始就接受它。
 
-## 写作结构（每段只做一个任务，不要混）
----
-第一段：观察
-只做一件事：描述电影中支持命题的一个具体事实。
-- 必须是一个不可替换的细节（场景/角色/对话/物件）
-- 不要解释它为什么重要，只描写它
-- 不要出现理论词
+## 写作要求（4条硬约束，其他自由流动）
+1. **开口要小**：开头1-2句必须是一个不可替换的电影事实（具体的场景/角色/对话/物件），不能从概论或理论切入。
+2. **理论必须后置**：先用2-3句电影事实和观察建立信任，理论只在后半段出现。不要一开始就甩理论词。
+3. **每句最多一个抽象概念**：电影事实和抽象概念交替推进，禁止连续堆叠理论术语。
+4. **收尾用问题不用总结**：最后一个句子必须是一个有悬念的开放问题。不要"我们必须追问"这种大词收束，要一个让人想继续想下去的具体问题。
 
-第二段：论证
-只做一件事：解释这个事实为什么支持命题。
-- 只能出现一个抽象概念
-- 可以使用骰子中的一个词作为分析工具
-
-第三段：「反证」
-只做一件事：提出一个可能的反对意见，然后解释为什么它不成立。
-- 格式："有人会说……但真正的问题是……"
-
-第四段：理论锚点
-只做一件事：用骰子提供的理论框架来解释命题的深层结构。
-- 骰子词最多出现两个（框架词 + 一个其他词）
-- 不要堆理论
-
-第五段：追问
-只做一件事：留下一个开放问题。
-- 不能用总结句结尾
-- 问题必须有悬念——让人想继续想下去
+在其中自然融入以下要素（不强制分章，让评论流动）：
+- 用骰子中的一个词作为分析工具来推进论证
+- 自然地提一个可能的反对意见（"但有人会说……真正的问题是……"），不用专门标出"反证"
+- 用骰子的理论框架来解释深层结构，骰子词最多出现两个（框架词+另一关键词）
+- 有观点的发展节奏：观察→论证→深化→追问，但不是四个步骤，是一段话的自然流向
 
 ## 骰子结果（提供分析工具，不是写作素材）
 分析对象: ${obj}
@@ -3922,7 +4119,7 @@ ${styleContext}
 
 ## 输出要求
 - 生成一段250-400字的论证，不是面面俱到的影评
-- 按上面5个段落依次写，不要合并段落
+- 不要使用"第一段""第二段"或任何段落编号——让评论自然流动
 - 按${profile.name}的论证弧线组织：${activeProfile.arc.join(' → ')}
 - 句式特征：${activeProfile.rhetoric.sentenceLen === 'long' ? '倒装长句为主' : activeProfile.rhetoric.sentenceLen === 'short' ? '短句叠加' : '长短句交替'}
 - 收尾方式：${closePatternDesc[activeProfile.closePattern] || '洞察收尾'}——但必须是一个问题，不是总结
@@ -4058,53 +4255,60 @@ function buildShareCard() {
   const cardConfidence = document.getElementById('shareCardConfidence');
   const cardStyle = document.getElementById('shareCardStyle');
   const cardReview = document.getElementById('shareCardReview');
+  const cardField = document.getElementById('shareCardField');
+  const cardClaim = document.getElementById('shareCardClaim');
+  const cardDice = document.getElementById('shareCardDice');
+
   if (!cardObject || !cardConfidence || !cardStyle || !cardReview) {
     console.warn('buildShareCard: 分享卡片DOM未就绪，跳过');
     return;
   }
   cardObject.textContent = currentObject;
   cardConfidence.textContent = currentConfidence;
-  cardStyle.textContent = STYLE_PROFILES[currentStyle].tag;
+  cardStyle.textContent = '骰评 · ' + STYLE_PROFILES[currentStyle].tag;
 
-  // 评论文本（双引擎）——用innerHTML保留高亮样式
-  let reviewText;
-  const templateFilm = aiExtractedFilm || getFilmData(currentObject);
-  if (engineMode === 'api' && apiInterpText) {
-    reviewText = apiInterpText;
-    cardReview.innerHTML = highlightDiceWords(reviewText, currentDice);
-  } else {
-    const reviewHTML = generateInterpretation(currentDice, currentObject, templateFilm);
-    reviewText = reviewHTML.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
-    cardReview.textContent = reviewText;
+  // 结构场
+  if (cardField) {
+    try {
+      if (currentField && currentField.master) {
+        cardField.innerHTML = '▎<span class="sf-master">' + currentField.master + '</span>';
+        cardField.style.display = 'block';
+      } else {
+        cardField.style.display = 'none';
+      }
+    } catch(e) { cardField.style.display = 'none'; }
   }
-
-  // 引擎标识 + 数据来源水印
-  const engineLabel = engineMode === 'api' ? 'AI引擎' : '模板引擎';
-  let sourceLabel = '';
-  if (filmDataSource === 'local') sourceLabel = '本地数据';
-  else if (filmDataSource === 'ai') sourceLabel = 'AI提取';
-  const watermarkParts = ['🎲 骰评', STYLE_PROFILES[currentStyle].tag, engineLabel];
-  if (sourceLabel) watermarkParts.push(sourceLabel);
-  document.querySelector('#shareCard .share-card-watermark').innerHTML = watermarkParts.map(p => typeof p === 'string' ? p : p).join(' · ');
-
-  const chainEl = document.getElementById('shareCardChain');
-  chainEl.innerHTML = '';
-  for (let i = 0; i < DICE_ORDER.length; i++) {
-    const key = DICE_ORDER[i];
-    const node = document.createElement('div');
-    let nodeClass = 'share-card-node';
-    if (i === 0) nodeClass += ' first-node';
-    if (i === DICE_ORDER.length - 1) nodeClass += ' last-node';
-    node.className = nodeClass;
-    node.innerHTML = `<span class="node-label">${DICE[key].label}</span>${currentDice[key]}`;
-    chainEl.appendChild(node);
-    if (i < DICE_ORDER.length - 1) {
-      const arrow = document.createElement('div');
-      arrow.className = 'share-card-arrow';
-      arrow.textContent = '↓';
-      chainEl.appendChild(arrow);
+  // 命题
+  if (cardClaim) {
+    try {
+      if (selectedClaim && selectedClaim.claim) {
+        cardClaim.textContent = '📌 ' + selectedClaim.claim;
+        cardClaim.style.display = 'block';
+      } else {
+        cardClaim.style.display = 'none';
+      }
+    } catch(e) { cardClaim.style.display = 'none'; }
+  }
+  // 评论
+  try {
+    const templateFilm = aiExtractedFilm || getFilmData(currentObject);
+    if (engineMode === 'api' && apiInterpText) {
+      cardReview.innerHTML = highlightDiceWords(apiInterpText, currentDice);
+    } else {
+      const reviewHTML = generateInterpretation(currentDice, currentObject, templateFilm);
+      cardReview.textContent = reviewHTML.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
     }
+  } catch(e) { cardReview.textContent = ''; }
+  // 骰子行
+  if (cardDice && currentDice) {
+    try {
+      const fw = currentDice.framework || '';
+      const prob = currentDice.problem || '';
+      const coll = currentDice.collapse || '';
+      cardDice.innerHTML = '🎲 <span class="sc-fw">' + fw + '</span> × <span>' + prob + '</span> → <span class="sc-collapse">' + coll + '</span>';
+    } catch(e) {}
   }
+
   // 构建完成后自动保存到历史记录
   saveRollToHistory();
 }
@@ -4138,6 +4342,7 @@ function saveRollToHistory() {
       : 'inside',
     director: currentDirector ? { key: currentDirector.key } : null,
     selectedClaim: selectedClaim ? { claim: selectedClaim.claim } : null,
+    field: currentField ? { master: currentField.master, axes: currentField.axes } : null,
     createdAt: new Date().toISOString()
   };
   // 去重：同一电影+相同骰子组合不重复记录
@@ -4240,7 +4445,10 @@ function loadHistory(id) {
     dataSourceEl.textContent = '';
     dataSourceEl.style.display = 'none';
   }
+  // 结构场复原
+  currentField = entry.field || null;
   buildShareCard();
+  renderFieldOnResult();
 }
 
 let _historyOpen = false;
